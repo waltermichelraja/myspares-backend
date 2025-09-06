@@ -1,9 +1,9 @@
 from django.http import JsonResponse
-from django.conf import settings
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 from .models import User, TokenManager, users_collection
+from .apps import AuthenticationConfig
 
 
 @api_view(["POST"])
@@ -48,7 +48,7 @@ def login(request):
         "user": user.to_dict(include_password=False)
     })
 
-    response.set_cookie("refresh_token", tokens["refresh"], **settings.COOKIE_SETTINGS)
+    response.set_cookie("refresh_token", tokens["refresh"], **AuthenticationConfig.COOKIE_SETTINGS)
     return response
 
 
@@ -64,7 +64,7 @@ def refresh(request):
     try:
         tokens=TokenManager.refresh_tokens(refresh_token)
         response=JsonResponse({"access": tokens["access"]})
-        response.set_cookie("refresh_token", tokens["refresh"], **settings.COOKIE_SETTINGS)
+        response.set_cookie("refresh_token", tokens["refresh"], **AuthenticationConfig.COOKIE_SETTINGS)
         return response
     except ValueError as e:
         return Response({"error": str(e)}, status=status.HTTP_401_UNAUTHORIZED)
@@ -79,7 +79,7 @@ def logout(request):
         TokenManager.blacklist_token(refresh_token)
 
         response=JsonResponse({"message": "logged out successfully"})
-        response.delete_cookie("refresh_token", path=settings.COOKIE_SETTINGS["path"])
+        response.delete_cookie("refresh_token", path=AuthenticationConfig.COOKIE_SETTINGS["path"])
         return response
     except ValueError as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
