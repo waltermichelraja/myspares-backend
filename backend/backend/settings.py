@@ -78,6 +78,13 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": True,
 }
 
+COOKIE_SETTINGS={
+    "httponly": True,
+    "secure": True,
+    "samesite": "Strict",
+    "path": "/api/auth/"
+}
+
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
