@@ -1,3 +1,5 @@
+from django.http import JsonResponse
+from django.conf import settings
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
@@ -41,15 +43,18 @@ def login(request):
 
     tokens=TokenManager.generate_tokens(user)
 
-    return Response({
-        **tokens,
+    response=JsonResponse({
+        "access": tokens["access"],
         "user": user.to_dict(include_password=False)
-    }, status=status.HTTP_200_OK)
+    })
+
+    response.set_cookie("refresh_token", tokens["refresh"], **settings.COOKIE_SETTINGS)
+    return response
 
 
 @api_view(["POST"])
 def refresh(request):
-    refresh_token=request.data.get("refresh")
+    refresh_token=request.COOKIES.get("refresh_token")
     if not refresh_token:
         return Response({"error": "refresh token required"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -58,21 +63,25 @@ def refresh(request):
 
     try:
         tokens=TokenManager.refresh_tokens(refresh_token)
-        return Response(tokens, status=status.HTTP_200_OK)
+        response=JsonResponse({"access": tokens["access"]})
+        response.set_cookie("refresh_token", tokens["refresh"], **settings.COOKIE_SETTINGS)
+        return response
     except ValueError as e:
         return Response({"error": str(e)}, status=status.HTTP_401_UNAUTHORIZED)
 
 
 @api_view(["POST"])
 def logout(request):
-    refresh_token=request.data.get("refresh")
+    refresh_token=request.COOKIES.get("refresh_token")
     if not refresh_token:
         return Response({"error": "refresh token required"}, status=status.HTTP_400_BAD_REQUEST)
     try:
         TokenManager.blacklist_token(refresh_token)
-        return Response({"message": "logged out successfully"}, status=status.HTTP_200_OK)
+
+        response=JsonResponse({"message": "logged out successfully"})
+        response.delete_cookie("refresh_token", path=settings.COOKIE_SETTINGS["path"])
+        return response
     except ValueError as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     except RuntimeError as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
