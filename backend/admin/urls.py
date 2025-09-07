@@ -1,11 +1,11 @@
 from django.urls import path
-from .views import (
-    list_brands, insert_brand, delete_brand, fetch_brand,
-    list_models, insert_model, delete_model, fetch_model,
-    list_categories, insert_category, delete_category, fetch_category
+from .views import (list_brands, insert_brand, delete_brand, fetch_brand, 
+                    list_models, insert_model, delete_model, fetch_model, 
+                    list_categories, insert_category, delete_category, fetch_category, 
+                    list_products, insert_product, delete_product, fetch_product, update_product
 )
 
-urlpatterns = [
+urlpatterns=[
     path("brands/", list_brands, name="list_brands"),
     path("brands/insert/", insert_brand, name="insert_brand"),
     path("brands/delete/<str:brand_code>/", delete_brand, name="delete_brand"),
@@ -20,4 +20,15 @@ urlpatterns = [
     path("brands/<str:brand_code>/models/<str:model_code>/categories/insert/", insert_category, name="insert_category"),
     path("brands/<str:brand_code>/models/<str:model_code>/categories/delete/<str:category_code>/", delete_category, name="delete_category"),
     path("brands/<str:brand_code>/models/<str:model_code>/categories/<str:category_code>/", fetch_category, name="fetch_category"),
+
+    path("brands/<str:brand_code>/models/<str:model_code>/categories/<str:category_code>/products/",
+         list_products, name="list_products"),
+    path("brands/<str:brand_code>/models/<str:model_code>/categories/<str:category_code>/products/insert/",
+         insert_product, name="insert_product"),
+    path("brands/<str:brand_code>/models/<str:model_code>/categories/<str:category_code>/products/delete/<str:product_code>/",
+         delete_product, name="delete_product"),
+    path("brands/<str:brand_code>/models/<str:model_code>/categories/<str:category_code>/products/<str:product_code>/",
+         fetch_product, name="fetch_product"),
+    path("brands/<str:brand_code>/models/<str:model_code>/categories/<str:category_code>/products/update/<str:product_code>/",
+         update_product, name="update_product"),
 ]
