@@ -6,6 +6,7 @@ import re
 brands_collection=settings.MONGO_DB["brands"]
 models_collection=settings.MONGO_DB["models"]
 categories_collection=settings.MONGO_DB["categories"]
+products_collection=settings.MONGO_DB["products"]
 
 if "model_code_1" in models_collection.index_information():
     models_collection.drop_index("model_code_1")
@@ -16,6 +17,7 @@ if "category_code_1" in categories_collection.index_information():
 brands_collection.create_index("brand_code", unique=True)
 models_collection.create_index([("brand_id", 1), ("model_code", 1)], unique=True)
 categories_collection.create_index([("model_id", 1), ("category_code", 1)], unique=True)
+products_collection.create_index([("category_id", 1), ("product_code", 1)], unique=True)
 
 
 class Brand:
@@ -309,3 +311,219 @@ class Category:
         if not doc:
             raise ValueError("category not found")
         return cls.from_dict(doc).to_dict()
+
+
+class Product:
+    def __init__(self, category_id, product_name, product_code, code, 
+                 description, price, stock, image_url, 
+                 created_at=None, reviews=None, offers=None, _id=None):
+        self.id=_id
+        self.category_id=category_id
+        self.product_name=product_name
+        self.product_code=product_code
+        self.code=code
+        self.description=description
+        self.price=price
+        self.stock=stock
+        self.image_url=image_url
+        self.created_at=created_at or datetime.now(timezone.utc)
+        self.reviews=reviews or []
+        self.offers=offers or {}
+
+    @staticmethod
+    def validate_fields(product_name, product_code, description, price, stock, image_url):
+        if not isinstance(product_name, str) or not (2 <= len(product_name.strip()) <= 50):
+            raise ValueError("invalid product_name")
+        if not re.match(r"^[A-Z0-9]+$", str(product_code).strip()):
+            raise ValueError("invalid product_code")
+        if not isinstance(description, str) or len(description.strip())==0:
+            raise ValueError("invalid description")
+        if not isinstance(price, (int, float)) or price < 0:
+            raise ValueError("invalid price")
+        if not isinstance(stock, int) or stock < 0:
+            raise ValueError("invalid stock")
+        if not isinstance(image_url, str) or len(image_url.strip())==0:
+            raise ValueError("invalid image_url")
+
+    def to_dict(self):
+        return {
+            "_id": str(self.id) if self.id else None,
+            "category_id": str(self.category_id),
+            "product_name": self.product_name,
+            "product_code": self.product_code,
+            "code": self.code,
+            "description": self.description,
+            "price": self.price,
+            "stock": self.stock,
+            "image_url": self.image_url,
+            "created_at": str(self.created_at),
+            "reviews": self.reviews,
+            "offers": self.offers,
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls(
+            category_id=data.get("category_id"),
+            product_name=data.get("product_name"),
+            product_code=data.get("product_code"),
+            code=data.get("code"),
+            description=data.get("description"),
+            price=data.get("price"),
+            stock=data.get("stock"),
+            image_url=data.get("image_url"),
+            created_at=data.get("created_at"),
+            reviews=data.get("reviews", []),
+            offers=data.get("offers", {}),
+            _id=data.get("_id"),
+        )
+
+    @classmethod
+    def products_list(cls, brand_code, model_code, category_code):
+        brand_doc=brands_collection.find_one({"brand_code": brand_code})
+        if not brand_doc:
+            raise ValueError("brand not found")
+        model_doc=models_collection.find_one({"brand_id": brand_doc["_id"], "model_code": model_code})
+        if not model_doc:
+            raise ValueError("model not found")
+        category_doc=categories_collection.find_one({"model_id": model_doc["_id"], "category_code": category_code})
+        if not category_doc:
+            raise ValueError("category not found")
+        docs=list(products_collection.find({"category_id": category_doc["_id"]}))
+        return [cls.from_dict(doc).to_dict() for doc in docs]
+
+    @classmethod
+    def product_insert(cls, brand_code, model_code, category_code, product_name, product_code, description, price, stock, image_url):
+        cls.validate_fields(product_name, product_code, description, price, stock, image_url)
+
+        brand_doc=brands_collection.find_one({"brand_code": brand_code})
+        if not brand_doc:
+            raise ValueError("brand not found")
+
+        model_doc=models_collection.find_one({"brand_id": brand_doc["_id"], "model_code": model_code})
+        if not model_doc:
+            raise ValueError("model not found")
+
+        category_doc=categories_collection.find_one({"model_id": model_doc["_id"], "category_code": category_code})
+        if not category_doc:
+            raise ValueError("category not found")
+
+        if products_collection.find_one({"category_id": category_doc["_id"], "product_code": product_code}):
+            raise ValueError("product_code already exists for this category")
+
+        code=f"{brand_doc['brand_code']}-{model_doc['model_code']}-{category_doc['category_code']}-{product_code}"
+
+        product_doc={
+            "category_id": category_doc["_id"],
+            "product_name": product_name,
+            "product_code": product_code,
+            "code": code,
+            "description": description,
+            "price": price,
+            "stock": stock,
+            "image_url": image_url,
+            "created_at": datetime.now(timezone.utc),
+            "reviews": [],
+            "offers": {}
+        }
+        result=products_collection.insert_one(product_doc)
+        product_doc["_id"]=result.inserted_id
+        return cls.from_dict(product_doc)
+
+    @classmethod
+    def product_delete(cls, brand_code, model_code, category_code, product_code):
+        brand_doc=brands_collection.find_one({"brand_code": brand_code})
+        if not brand_doc:
+            raise ValueError("brand not found")
+        model_doc=models_collection.find_one({"brand_id": brand_doc["_id"], "model_code": model_code})
+        if not model_doc:
+            raise ValueError("model not found")
+        category_doc=categories_collection.find_one({"model_id": model_doc["_id"], "category_code": category_code})
+        if not category_doc:
+            raise ValueError("category not found")
+        result=products_collection.delete_one({"category_id": category_doc["_id"], "product_code": product_code})
+        if result.deleted_count==0:
+            raise ValueError("product not found")
+        return True
+
+    @classmethod
+    def product_fetch(cls, brand_code, model_code, category_code, product_code):
+        brand_doc=brands_collection.find_one({"brand_code": brand_code})
+        if not brand_doc:
+            raise ValueError("brand not found")
+        model_doc=models_collection.find_one({"brand_id": brand_doc["_id"], "model_code": model_code})
+        if not model_doc:
+            raise ValueError("model not found")
+        category_doc=categories_collection.find_one({"model_id": model_doc["_id"], "category_code": category_code})
+        if not category_doc:
+            raise ValueError("category not found")
+        doc=products_collection.find_one({"category_id": category_doc["_id"], "product_code": product_code})
+        if not doc:
+            raise ValueError("product not found")
+        return cls.from_dict(doc).to_dict()
+
+    @classmethod
+    def product_update(cls, brand_code, model_code, category_code, product_code, updates: dict):
+        brand_doc=brands_collection.find_one({"brand_code": brand_code})
+        if not brand_doc:
+            raise ValueError("brand not found")
+        model_doc=models_collection.find_one({"brand_id": brand_doc["_id"], "model_code": model_code})
+        if not model_doc:
+            raise ValueError("model not found")
+        category_doc=categories_collection.find_one({"model_id": model_doc["_id"], "category_code": category_code})
+        if not category_doc:
+            raise ValueError("category not found")
+
+        product_doc=products_collection.find_one({
+            "category_id": category_doc["_id"],
+            "product_code": product_code
+        })
+        if not product_doc:
+            raise ValueError("product not found")
+
+        allowed_fields=["product_name", "description", "price", "stock", "image_url", "offers"]
+        update_data={}
+        for field in allowed_fields:
+            if field in updates:
+                if field=="price":
+                    try:
+                        update_data["price"]=int(updates["price"])
+                    except (ValueError, TypeError):
+                        raise ValueError("price must be an integer")
+                elif field=="stock":
+                    try:
+                        update_data["stock"]=int(updates["stock"])
+                    except (ValueError, TypeError):
+                        raise ValueError("stock must be an integer")
+                elif field=="offers":
+                    offers=updates["offers"]
+                    if not isinstance(offers, dict):
+                        raise ValueError("offers must be an object with discount, valid_from, valid_to, description")
+                    offer_fields=["discount", "valid_from", "valid_to", "description"]
+                    structured_offer={}
+
+                    for of in offer_fields:
+                        if of not in offers:
+                            raise ValueError(f"missing offer field: {of}")
+                    try:
+                        structured_offer["discount"]=float(offers["discount"])
+                    except (ValueError, TypeError):
+                        raise ValueError("discount must be a number")
+
+                    structured_offer["valid_from"]=str(offers["valid_from"]).strip()
+                    structured_offer["valid_to"]=str(offers["valid_to"]).strip()
+                    structured_offer["description"]=str(offers["description"]).strip()
+                    update_data["offers"]=structured_offer
+                else:
+                    update_data[field]=str(updates[field]).strip()
+
+        if not update_data:
+            raise ValueError("no valid fields to update")
+        result=products_collection.update_one(
+            {"_id": product_doc["_id"]},
+            {"$set": update_data}
+        )
+        if result.modified_count==0:
+            raise RuntimeError("update failed")
+        updated_doc=products_collection.find_one({"_id": product_doc["_id"]})
+        return cls.from_dict(updated_doc)
