@@ -1,4 +1,5 @@
 from django.http import JsonResponse
+from pymongo.errors import PyMongoError
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
@@ -19,7 +20,6 @@ def register(request):
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     except RuntimeError as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
 
 @api_view(["POST"])
 def login(request):
@@ -31,23 +31,23 @@ def login(request):
         return Response({"error": "phone_number is required"}, status=status.HTTP_400_BAD_REQUEST)
     if not password:
         return Response({"error": "password is required"}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        user_data=users_collection.find_one({"phone_number": str(phone_number)})
+    except PyMongoError as e:
+        print(f"[DB ERROR] failed to query user: {e}")
+        return Response({"error": "database error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    user_data=users_collection.find_one({"phone_number": str(phone_number)})
     if not user_data:
         return Response({"error": "invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
-
     user=User.from_dict(user_data)
-
     if not user.check_password(password):
         return Response({"error": "invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 
     tokens=TokenManager.generate_tokens(user)
-
     response=JsonResponse({
         "access": tokens["access"],
         "user": user.to_dict(include_password=False)
     })
-
     response.set_cookie("refresh_token", tokens["refresh"], **AuthenticationConfig.COOKIE_SETTINGS)
     return response
 
@@ -58,16 +58,17 @@ def refresh(request):
     if not refresh_token:
         return Response({"error": "refresh token required"}, status=status.HTTP_400_BAD_REQUEST)
 
-    if TokenManager.is_blacklisted(refresh_token):
-        return Response({"error": "refresh token has been revoked"}, status=status.HTTP_401_UNAUTHORIZED)
-
     try:
+        if TokenManager.is_blacklisted(refresh_token):
+            return Response({"error": "refresh token has been revoked"}, status=status.HTTP_401_UNAUTHORIZED)
         tokens=TokenManager.refresh_tokens(refresh_token)
         response=JsonResponse({"access": tokens["access"]})
         response.set_cookie("refresh_token", tokens["refresh"], **AuthenticationConfig.COOKIE_SETTINGS)
         return response
     except ValueError as e:
         return Response({"error": str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+    except RuntimeError as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(["POST"])
