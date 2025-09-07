@@ -19,7 +19,7 @@ client=MongoClient(MONGO_URI)
 MONGO_DB=client[MONGO_DB_NAME]
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
+#    'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -28,6 +28,7 @@ INSTALLED_APPS = [
 
     'rest_framework',
     'authentication',
+    'admin',
 ]
 
 MIDDLEWARE = [
