@@ -21,11 +21,22 @@ class User:
         self.created_at=created_at or datetime.utcnow()
 
     @staticmethod
-    def validate_fields(username, phone_number):
-        if len(str(username))>24:
-            raise ValueError("username cannot exceed 24 characters")
+    def validate_fields(username, phone_number, password):
+        if not re.match(r"^[A-Za-z0-9_]+$", str(username)) or not re.match(r"^.{1,24}$", str(username)):
+            raise ValueError("invalid username: " + (
+                    "username too long" if not re.match(r"^.{1,24}$", str(username)) 
+                    else "invalid characters"
+                )
+            )
         if not re.match(r"^\d{10,15}$", str(phone_number)):
             raise ValueError("invalid phone number")
+        
+        if not re.match(r"^(?=.*[A-Z])(?=.*[a-z])(?=.*[\W_]).{1,14}$", str(password)):
+            raise ValueError("invalid password: " + (
+                    "password too long" if not re.match(r"^.{1,14}$", str(password)) 
+                    else "must include uppercase, lowercase, and special character"
+                )
+            )
 
     @staticmethod
     def hash_password(password):
