@@ -1,7 +1,7 @@
 from django.conf import settings
 from pymongo.errors import PyMongoError
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from datetime import datetime, timezone
 import re
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
@@ -22,26 +22,26 @@ class User:
 
     @staticmethod
     def validate_fields(username, phone_number, password):
-        if not re.match(r"^[A-Za-z0-9_]+$", str(username)) or not re.match(r"^.{1,24}$", str(username)):
+        if not re.match(r"^[A-Za-z ]+$", str(username)) or not re.match(r"^.{4,24}$", str(username)):
             raise ValueError("invalid username: " + (
-                    "username too long" if not re.match(r"^.{1,24}$", str(username)) 
+                    "username too long/short" if not re.match(r"^.{4,24}$", str(username)) 
                     else "invalid characters"
                 )
             )
         if not re.match(r"^\d{10,15}$", str(phone_number)):
-            raise ValueError("invalid phone number")
-        
-        if not re.match(r"^(?=.*[A-Z])(?=.*[a-z])(?=.*[\W_]).{1,14}$", str(password)):
+            raise ValueError("invalid phone number: must be 10–15 digits")
+
+        if not re.match(r"^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[\W_]).{4,16}$", str(password)):
             raise ValueError("invalid password: " + (
-                    "password too long" if not re.match(r"^.{1,14}$", str(password)) 
-                    else "must include uppercase, lowercase, and special character"
+                    "password too long/short" if not re.match(r"^.{4,16}$", str(password))
+                    else "must include uppercase, lowercase, number, and special character"
                 )
             )
 
     @staticmethod
     def hash_password(password):
         return generate_password_hash(password)
-    
+
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
@@ -68,25 +68,24 @@ class User:
 
     @classmethod
     def create(cls, username, phone_number, password):
-        cls.validate_fields(username, phone_number)
-
-        if users_collection.find_one({"phone_number": str(phone_number)}):
-            raise ValueError("phone number already registered")
-
-        user_doc={
-            "username": str(username),
-            "phone_number": str(phone_number),
-            "password_hash": cls.hash_password(password),
-            "created_at": datetime.utcnow()
-        }
+        cls.validate_fields(username, phone_number, password)
         try:
+            if users_collection.find_one({"phone_number": str(phone_number)}):
+                raise ValueError("phone number already registered")
+
+            user_doc={
+                "username": str(username),
+                "phone_number": str(phone_number),
+                "password_hash": cls.hash_password(password),
+                "created_at": datetime.now(timezone.utc),
+            }
             result=users_collection.insert_one(user_doc)
             user_doc["_id"]=result.inserted_id
             return cls.from_dict(user_doc)
         except PyMongoError as e:
-            print(f"[DB ERROR] failed to insert user: {e}")
+            print(f"[DB ERROR] failed to insert/find user: {e}")
             raise RuntimeError("database error: unable to register user")
-        
+
 
 class TokenManager:
     @staticmethod
@@ -117,7 +116,7 @@ class TokenManager:
         try:
             blacklisted_tokens_collection.insert_one({
                 "token": refresh_token,
-                "blacklisted_at": datetime.utcnow()
+                "blacklisted_at": datetime.now(timezone.utc)
             })
         except PyMongoError as e:
             print(f"[DB ERROR] failed to blacklist token: {e}")
@@ -125,4 +124,8 @@ class TokenManager:
 
     @staticmethod
     def is_blacklisted(refresh_token: str)->bool:
-        return blacklisted_tokens_collection.find_one({"token": refresh_token}) is not None
+        try:
+            return blacklisted_tokens_collection.find_one({"token": refresh_token}) is not None
+        except PyMongoError as e:
+            print(f"[DB ERROR] failed to check blacklist: {e}")
+            raise RuntimeError("server error: unable to check token blacklist")
