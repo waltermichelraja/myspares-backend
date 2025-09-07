@@ -17,13 +17,18 @@ class Brand:
 
     @staticmethod
     def validate_fields(brand_name, brand_code, image_url):
-        if not re.match(r"^[A-Za-z ]+$", str(brand_name)) or not re.match(r"^.{2,50}$", str(brand_name)):
-            raise ValueError("invalid brand_name: " + (
-                "too long/short" if not re.match(r"^.{2,50}$", str(brand_name))
-                else "invalid characters"
-            ))
+        brand_name=brand_name.strip()
+        brand_code=brand_code.strip()
+        image_url=image_url.strip()
 
-        if not re.match(r"^[A-Z]{2,10}$", str(brand_code)):
+        if not re.match(r"^[A-Za-z ]+$", brand_name) or not re.match(r"^.{2,50}$", brand_name):
+            raise ValueError(
+                "invalid brand_name: " + (
+                    "too long/short" if not re.match(r"^.{2,50}$", brand_name)
+                    else "invalid characters"
+                )
+            )
+        if not re.match(r"^[A-Z]{2,10}$", brand_code):
             raise ValueError("invalid brand_code: must be 2–10 uppercase letters")
 
         if not image_url or not isinstance(image_url, str):

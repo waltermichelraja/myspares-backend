@@ -29,7 +29,7 @@ def insert_brand(request):
 @api_view(["DELETE"])
 def delete_brand(request, brand_code):
     try:
-        Brand.brand_delete(brand_code)
+        Brand.brand_delete(brand_code.strip())
         return Response({"message": "brand deleted successfully"}, status=status.HTTP_200_OK)
     except ValueError as e:
         return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
@@ -39,7 +39,7 @@ def delete_brand(request, brand_code):
 @api_view(["GET"])
 def fetch_brand(request, brand_code):
     try:
-        brand = Brand.brand_fetch(brand_code)
+        brand = Brand.brand_fetch(brand_code.strip())
         return Response({"brand": brand}, status=status.HTTP_200_OK)
     except ValueError as e:
         return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
