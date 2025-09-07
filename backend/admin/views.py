@@ -1,7 +1,7 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Brand, Model
+from .models import Brand, Model, Category
 
 
 @api_view(["GET"])
@@ -86,6 +86,54 @@ def fetch_model(request, brand_code, model_code):
     try:
         model = Model.model_fetch(brand_code, model_code)
         return Response({"model": model}, status=status.HTTP_200_OK)
+    except ValueError as e:
+        return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+    except RuntimeError as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(["GET"])
+def list_categories(request, brand_code, model_code):
+    try:
+        categories = Category.categories_list(brand_code, model_code)
+        return Response({"categories": categories}, status=status.HTTP_200_OK)
+    except ValueError as e:
+        return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+    except RuntimeError as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(["POST"])
+def insert_category(request, brand_code, model_code):
+    data = request.data
+    for field in ["category_name", "category_code", "image_url"]:
+        if field not in data:
+            return Response({"error": f"{field} is required"}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        category = Category.category_insert(
+            brand_code, model_code,
+            data["category_name"], data["category_code"], data["image_url"]
+        )
+        return Response({"message": "category inserted successfully", "category": category.to_dict()}, status=status.HTTP_201_CREATED)
+    except ValueError as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    except RuntimeError as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(["DELETE"])
+def delete_category(request, brand_code, model_code, category_code):
+    try:
+        Category.category_delete(brand_code, model_code, category_code)
+        return Response({"message": "category deleted successfully"}, status=status.HTTP_200_OK)
+    except ValueError as e:
+        return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+    except RuntimeError as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(["GET"])
+def fetch_category(request, brand_code, model_code, category_code):
+    try:
+        category = Category.category_fetch(brand_code, model_code, category_code)
+        return Response({"category": category}, status=status.HTTP_200_OK)
     except ValueError as e:
         return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
     except RuntimeError as e:
