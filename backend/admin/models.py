@@ -564,20 +564,28 @@ class Product:
                 elif field=="offers":
                     offers=updates["offers"]
                     if not isinstance(offers, dict):
-                        raise ValueError("offers must be an object with discount, valid_from, valid_to, description")
-                    offer_fields=["discount", "valid_from", "valid_to", "description"]
+                        raise ValueError("offers must be an object with discount, validity, description")
+                    required_fields=["discount", "validity", "description"]
+                    for rf in required_fields:
+                        if rf not in offers:
+                            raise ValueError(f"missing offer field: {rf}")
                     structured_offer={}
-
-                    for of in offer_fields:
-                        if of not in offers:
-                            raise ValueError(f"missing offer field: {of}")
                     try:
                         structured_offer["discount"]=float(offers["discount"])
                     except (ValueError, TypeError):
                         raise ValueError("discount must be a number")
 
-                    structured_offer["valid_from"]=str(offers["valid_from"]).strip()
-                    structured_offer["valid_to"]=str(offers["valid_to"]).strip()
+                    validity=offers.get("validity")
+                    if not isinstance(validity, dict) or "from" not in validity or "to" not in validity:
+                        raise ValueError("validity must be an object with 'from' and 'to' fields (timestamps)")
+                    try:
+                        structured_offer["validity"]={
+                            "from": int(validity["from"]),
+                            "to": int(validity["to"])
+                        }
+                    except (ValueError, TypeError):
+                        raise ValueError("'from' and 'to' inside validity must be integers (timestamps)")
+
                     structured_offer["description"]=str(offers["description"]).strip()
                     update_data["offers"]=structured_offer
                 else:
