@@ -92,10 +92,40 @@ class Brand:
 
     @classmethod
     def brand_delete(cls, brand_code):
-        result=brands_collection.delete_one({"brand_code": brand_code})
-        if result.deleted_count==0:
+        brand_doc=brands_collection.find_one({"brand_code": brand_code})
+        if not brand_doc:
             raise ValueError("brand not found")
-        return True
+        brand_id=brand_doc["_id"]
+        model_docs=list(models_collection.find({"brand_id": brand_id}, {"_id": 1}))
+        model_ids=[d["_id"] for d in model_docs]
+        category_ids=[]
+
+        if model_ids:
+            category_docs=list(categories_collection.find({"model_id": {"$in": model_ids}}, {"_id": 1}))
+            category_ids=[d["_id"] for d in category_docs]
+        try:
+            client=settings.MONGO_DB.client
+            with client.start_session() as session:
+                with session.start_transaction():
+                    if category_ids:
+                        products_collection.delete_many({"category_id": {"$in": category_ids}}, session=session)
+                    if model_ids:
+                        categories_collection.delete_many({"model_id": {"$in": model_ids}}, session=session)
+                        models_collection.delete_many({"_id": {"$in": model_ids}}, session=session)
+                    brands_collection.delete_one({"_id": brand_id}, session=session)
+            return True
+        except Exception:
+            try:
+                if category_ids:
+                    products_collection.delete_many({"category_id": {"$in": category_ids}})
+                if model_ids:
+                    categories_collection.delete_many({"model_id": {"$in": model_ids}})
+                    models_collection.delete_many({"_id": {"$in": model_ids}})
+                brands_collection.delete_one({"_id": brand_id})
+                return True
+            except PyMongoError as e:
+                raise RuntimeError(f"database error during cascade delete: {e}") from e
+
 
     @classmethod
     def brand_fetch(cls, brand_code):
@@ -187,10 +217,32 @@ class Model:
         brand_doc=brands_collection.find_one({"brand_code": brand_code})
         if not brand_doc:
             raise ValueError("brand not found")
-        result=models_collection.delete_one({"brand_id": brand_doc["_id"], "model_code": model_code})
-        if result.deleted_count==0:
+        model_doc=models_collection.find_one({"brand_id": brand_doc["_id"], "model_code": model_code})
+        if not model_doc:
             raise ValueError("model not found")
-        return True
+        
+        model_id=model_doc["_id"]
+        category_docs=list(categories_collection.find({"model_id": model_id}, {"_id": 1}))
+        category_ids=[d["_id"] for d in category_docs]
+        try:
+            client=settings.MONGO_DB.client
+            with client.start_session() as session:
+                with session.start_transaction():
+                    if category_ids:
+                        products_collection.delete_many({"category_id": {"$in": category_ids}}, session=session)
+                        categories_collection.delete_many({"_id": {"$in": category_ids}}, session=session)
+                    models_collection.delete_one({"_id": model_id}, session=session)
+            return True
+        except Exception:
+            try:
+                if category_ids:
+                    products_collection.delete_many({"category_id": {"$in": category_ids}})
+                    categories_collection.delete_many({"_id": {"$in": category_ids}})
+                models_collection.delete_one({"_id": model_id})
+                return True
+            except PyMongoError as e:
+                raise RuntimeError(f"database error during cascade delete: {e}") from e
+
 
     @classmethod
     def model_fetch(cls, brand_code, model_code):
@@ -294,10 +346,24 @@ class Category:
         model_doc=models_collection.find_one({"brand_id": brand_doc["_id"], "model_code": model_code})
         if not model_doc:
             raise ValueError("model not found")
-        result=categories_collection.delete_one({"model_id": model_doc["_id"], "category_code": category_code})
-        if result.deleted_count==0:
+        category_doc=categories_collection.find_one({"model_id": model_doc["_id"], "category_code": category_code})
+        if not category_doc:
             raise ValueError("category not found")
-        return True
+        category_id=category_doc["_id"]
+        try:
+            client=settings.MONGO_DB.client
+            with client.start_session() as session:
+                with session.start_transaction():
+                    products_collection.delete_many({"category_id": category_id}, session=session)
+                    categories_collection.delete_one({"_id": category_id}, session=session)
+            return True
+        except Exception:
+            try:
+                products_collection.delete_many({"category_id": category_id})
+                categories_collection.delete_one({"_id": category_id})
+                return True
+            except PyMongoError as e:
+                raise RuntimeError(f"database error during cascade delete: {e}") from e
 
     @classmethod
     def category_fetch(cls, brand_code, model_code, category_code):
