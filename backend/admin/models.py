@@ -126,13 +126,37 @@ class Brand:
             except PyMongoError as e:
                 raise RuntimeError(f"database error during cascade delete: {e}") from e
 
-
     @classmethod
     def brand_fetch(cls, brand_code):
         doc=brands_collection.find_one({"brand_code": brand_code})
         if not doc:
             raise ValueError("brand not found")
         return cls.from_dict(doc).to_dict()
+    
+    @classmethod
+    def brand_update(cls, brand_code, updates: dict):
+        brand_doc=brands_collection.find_one({"brand_code": brand_code})
+        if not brand_doc:
+            raise ValueError("brand not found")
+        allowed_fields=["brand_name", "image_url"]
+        update_data={}
+        for field in allowed_fields:
+            if field in updates:
+                if field=="brand_name":
+                    if not isinstance(updates["brand_name"], str) or not (2 <= len(updates["brand_name"].strip()) <= 50):
+                        raise ValueError("invalid brand_name")
+                    update_data["brand_name"]=updates["brand_name"].strip()
+                elif field=="image_url":
+                    if not isinstance(updates["image_url"], str) or not updates["image_url"].strip():
+                        raise ValueError("invalid image_url")
+                    update_data["image_url"]=updates["image_url"].strip()
+        if not update_data:
+            raise ValueError("no valid fields to update")
+        result=brands_collection.update_one({"_id": brand_doc["_id"]}, {"$set": update_data})
+        if result.modified_count==0:
+            raise RuntimeError("update failed")
+        updated_doc=brands_collection.find_one({"_id": brand_doc["_id"]})
+        return cls.from_dict(updated_doc)
 
 
 class Model:
@@ -253,6 +277,34 @@ class Model:
         if not doc:
             raise ValueError("model not found")
         return cls.from_dict(doc).to_dict()
+
+    @classmethod
+    def model_update(cls, brand_code, model_code, updates: dict):
+        brand_doc=brands_collection.find_one({"brand_code": brand_code})
+        if not brand_doc:
+            raise ValueError("brand not found")
+        model_doc=models_collection.find_one({"brand_id": brand_doc["_id"], "model_code": model_code})
+        if not model_doc:
+            raise ValueError("model not found")
+        allowed_fields=["model_name", "image_url"]
+        update_data={}
+        for field in allowed_fields:
+            if field in updates:
+                if field=="model_name":
+                    if not isinstance(updates["model_name"], str) or not (2 <= len(updates["model_name"].strip()) <= 50):
+                        raise ValueError("invalid model_name")
+                    update_data["model_name"]=updates["model_name"].strip()
+                elif field=="image_url":
+                    if not isinstance(updates["image_url"], str) or not updates["image_url"].strip():
+                        raise ValueError("invalid image_url")
+                    update_data["image_url"]=updates["image_url"].strip()
+        if not update_data:
+            raise ValueError("no valid fields to update")
+        result=models_collection.update_one({"_id": model_doc["_id"]}, {"$set": update_data})
+        if result.modified_count==0:
+            raise RuntimeError("update failed")
+        updated_doc=models_collection.find_one({"_id": model_doc["_id"]})
+        return cls.from_dict(updated_doc)
 
 
 class Category:
@@ -377,6 +429,37 @@ class Category:
         if not doc:
             raise ValueError("category not found")
         return cls.from_dict(doc).to_dict()
+    
+    @classmethod
+    def category_update(cls, brand_code, model_code, category_code, updates: dict):
+        brand_doc=brands_collection.find_one({"brand_code": brand_code})
+        if not brand_doc:
+            raise ValueError("brand not found")
+        model_doc=models_collection.find_one({"brand_id": brand_doc["_id"], "model_code": model_code})
+        if not model_doc:
+            raise ValueError("model not found")
+        category_doc=categories_collection.find_one({"model_id": model_doc["_id"], "category_code": category_code})
+        if not category_doc:
+            raise ValueError("category not found")
+        allowed_fields=["category_name", "image_url"]
+        update_data={}
+        for field in allowed_fields:
+            if field in updates:
+                if field=="category_name":
+                    if not isinstance(updates["category_name"], str) or not (2 <= len(updates["category_name"].strip()) <= 50):
+                        raise ValueError("invalid category_name")
+                    update_data["category_name"]=updates["category_name"].strip()
+                elif field=="image_url":
+                    if not isinstance(updates["image_url"], str) or not updates["image_url"].strip():
+                        raise ValueError("invalid image_url")
+                    update_data["image_url"]=updates["image_url"].strip()
+        if not update_data:
+            raise ValueError("no valid fields to update")
+        result=categories_collection.update_one({"_id": category_doc["_id"]}, {"$set": update_data})
+        if result.modified_count==0:
+            raise RuntimeError("update failed")
+        updated_doc=categories_collection.find_one({"_id": category_doc["_id"]})
+        return cls.from_dict(updated_doc)
 
 
 class Product:
