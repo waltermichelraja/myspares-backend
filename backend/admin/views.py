@@ -50,6 +50,23 @@ def fetch_brand(request, brand_code):
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@api_view(["PUT"])
+def update_brand(request, brand_code):
+    updates=request.data
+    if not updates:
+        return Response({"error": "no fields provided for update"}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        updated_brand=Brand.brand_update(brand_code, updates)
+        return Response(
+            {"message": "brand updated successfully", "brand": updated_brand.to_dict()},
+            status=status.HTTP_200_OK
+        )
+    except ValueError as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    except RuntimeError as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 
 @api_view(["GET"])
 def list_models(request, brand_code):
@@ -95,6 +112,23 @@ def fetch_model(request, brand_code, model_code):
         return Response({"model": model}, status=status.HTTP_200_OK)
     except ValueError as e:
         return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+    except RuntimeError as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(["PUT"])
+def update_model(request, brand_code, model_code):
+    updates=request.data
+    if not updates:
+        return Response({"error": "no fields provided for update"}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        updated_model=Model.model_update(brand_code, model_code, updates)
+        return Response(
+            {"message": "model updated successfully", "model": updated_model.to_dict()},
+            status=status.HTTP_200_OK
+        )
+    except ValueError as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     except RuntimeError as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -147,6 +181,23 @@ def fetch_category(request, brand_code, model_code, category_code):
         return Response({"category": category}, status=status.HTTP_200_OK)
     except ValueError as e:
         return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+    except RuntimeError as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(["PUT"])
+def update_category(request, brand_code, model_code, category_code):
+    updates=request.data
+    if not updates:
+        return Response({"error": "no fields provided for update"}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        updated_category=Category.category_update(brand_code, model_code, category_code, updates)
+        return Response(
+            {"message": "category updated successfully", "category": updated_category.to_dict()},
+            status=status.HTTP_200_OK
+        )
+    except ValueError as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     except RuntimeError as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
