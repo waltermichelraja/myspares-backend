@@ -8,12 +8,6 @@ models_collection=settings.MONGO_DB["models"]
 categories_collection=settings.MONGO_DB["categories"]
 products_collection=settings.MONGO_DB["products"]
 
-if "model_code_1" in models_collection.index_information():
-    models_collection.drop_index("model_code_1")
-
-if "category_code_1" in categories_collection.index_information():
-    categories_collection.drop_index("category_code_1")
-
 brands_collection.create_index("brand_code", unique=True)
 models_collection.create_index([("brand_id", 1), ("model_code", 1)], unique=True)
 categories_collection.create_index([("model_id", 1), ("category_code", 1)], unique=True)
