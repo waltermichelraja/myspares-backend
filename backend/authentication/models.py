@@ -18,7 +18,7 @@ class User:
         self.username=username
         self.phone_number=str(phone_number)
         self.password_hash=password_hash
-        self.created_at=created_at or datetime.utcnow()
+        self.created_at=created_at or datetime.now(timezone.utc)
 
     @staticmethod
     def validate_fields(username, phone_number, password):
