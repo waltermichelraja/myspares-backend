@@ -50,6 +50,15 @@ def fetch_brand(request, brand_code):
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@api_view(["GET"])
+def search_brand(request, query):
+    try:
+        results = Brand.brand_search(query)
+        return Response({"results": results}, status=status.HTTP_200_OK)
+    except RuntimeError as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+
 @api_view(["PUT"])
 def update_brand(request, brand_code):
     updates=request.data
@@ -110,6 +119,17 @@ def fetch_model(request, brand_code, model_code):
     try:
         model=Model.model_fetch(brand_code, model_code)
         return Response({"model": model}, status=status.HTTP_200_OK)
+    except ValueError as e:
+        return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+    except RuntimeError as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(["GET"])
+def search_model(request, brand_code, query):
+    try:
+        results = Model.model_search(brand_code, query)
+        return Response({"results": results}, status=status.HTTP_200_OK)
     except ValueError as e:
         return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
     except RuntimeError as e:
@@ -185,6 +205,17 @@ def fetch_category(request, brand_code, model_code, category_code):
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@api_view(["GET"])
+def search_category(request, brand_code, model_code, query):
+    try:
+        results = Category.category_search(brand_code, model_code, query)
+        return Response({"results": results}, status=status.HTTP_200_OK)
+    except ValueError as e:
+        return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+    except RuntimeError as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 @api_view(["PUT"])
 def update_category(request, brand_code, model_code, category_code):
     updates=request.data
@@ -250,6 +281,17 @@ def fetch_product(request, brand_code, model_code, category_code, product_code):
     try:
         product=Product.product_fetch(brand_code, model_code, category_code, product_code)
         return Response({"product": product}, status=status.HTTP_200_OK)
+    except ValueError as e:
+        return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+    except RuntimeError as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(["GET"])
+def search_product(request, brand_code, model_code, category_code, query):
+    try:
+        results = Product.product_search(brand_code, model_code, category_code, query)
+        return Response({"results": results}, status=status.HTTP_200_OK)
     except ValueError as e:
         return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
     except RuntimeError as e:
