@@ -1,15 +1,10 @@
-from django.conf import settings
 from pymongo.errors import PyMongoError
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timezone
-import re
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
-
-users_collection=settings.MONGO_DB["users"]
-users_collection.create_index("phone_number", unique=True)
-
-blacklisted_tokens_collection=settings.MONGO_DB["blacklisted_tokens"]
+from .admin import *
+import re
 
 
 class User:
