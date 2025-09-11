@@ -118,6 +118,20 @@ class Brand:
         return cls.from_dict(doc).to_dict()
     
     @classmethod
+    def brand_search(cls, query):
+        try:
+            regex={"$regex": query, "$options": "i"}
+            docs=list(brands_collection.find(
+                {"$or": [
+                    {"brand_name": regex},
+                    {"brand_code": regex}
+                ]}
+            ))
+            return [cls.from_dict(doc).to_dict() for doc in docs]
+        except PyMongoError as e:
+            raise RuntimeError(f"database error during search: {e}")
+    
+    @classmethod
     def brand_update(cls, brand_code, updates: dict):
         brand_doc=brands_collection.find_one({"brand_code": brand_code})
         if not brand_doc:
@@ -251,7 +265,6 @@ class Model:
             except PyMongoError as e:
                 raise RuntimeError(f"database error during cascade delete: {e}") from e
 
-
     @classmethod
     def model_fetch(cls, brand_code, model_code):
         brand_doc=brands_collection.find_one({"brand_code": brand_code})
@@ -261,6 +274,20 @@ class Model:
         if not doc:
             raise ValueError("model not found")
         return cls.from_dict(doc).to_dict()
+
+    @classmethod
+    def model_search(cls, brand_code, query):
+        brand_doc=brands_collection.find_one({"brand_code": brand_code})
+        if not brand_doc:
+            raise ValueError("brand not found")
+        regex={"$regex": query, "$options": "i"}
+        docs=list(models_collection.find(
+            {"brand_id": brand_doc["_id"], "$or": [
+                {"model_name": regex},
+                {"model_code": regex}
+            ]}
+        ))
+        return [cls.from_dict(doc).to_dict() for doc in docs]
 
     @classmethod
     def model_update(cls, brand_code, model_code, updates: dict):
@@ -414,6 +441,23 @@ class Category:
             raise ValueError("category not found")
         return cls.from_dict(doc).to_dict()
     
+    @classmethod
+    def category_search(cls, brand_code, model_code, query):
+        brand_doc=brands_collection.find_one({"brand_code": brand_code})
+        if not brand_doc:
+            raise ValueError("brand not found")
+        model_doc=models_collection.find_one({"brand_id": brand_doc["_id"], "model_code": model_code})
+        if not model_doc:
+            raise ValueError("model not found")
+        regex={"$regex": query, "$options": "i"}
+        docs=list(categories_collection.find(
+            {"model_id": model_doc["_id"], "$or": [
+                {"category_name": regex},
+                {"category_code": regex}
+            ]}
+        ))
+        return [cls.from_dict(doc).to_dict() for doc in docs]
+
     @classmethod
     def category_update(cls, brand_code, model_code, category_code, updates: dict):
         brand_doc=brands_collection.find_one({"brand_code": brand_code})
@@ -594,6 +638,28 @@ class Product:
         if not doc:
             raise ValueError("product not found")
         return cls.from_dict(doc).to_dict()
+
+    @classmethod
+    def product_search(cls, brand_code, model_code, category_code, query):
+        brand_doc=brands_collection.find_one({"brand_code": brand_code})
+        if not brand_doc:
+            raise ValueError("brand not found")
+        model_doc=models_collection.find_one({"brand_id": brand_doc["_id"], "model_code": model_code})
+        if not model_doc:
+            raise ValueError("model not found")
+        category_doc=categories_collection.find_one({"model_id": model_doc["_id"], "category_code": category_code})
+        if not category_doc:
+            raise ValueError("category not found")
+        regex={"$regex": query, "$options": "i"}
+        docs=list(products_collection.find(
+            {"category_id": category_doc["_id"], "$or": [
+                {"product_name": regex},
+                {"product_code": regex},
+                {"description": regex}
+            ]}
+        ))
+        return [cls.from_dict(doc).to_dict() for doc in docs]
+
 
     @classmethod
     def product_update(cls, brand_code, model_code, category_code, product_code, updates: dict):
