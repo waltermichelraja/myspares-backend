@@ -3,7 +3,7 @@ from pymongo.errors import PyMongoError
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from .models import User, TokenManager, users_collection
+from .models import Auth, TokenManager, users_collection
 from .apps import AuthenticationConfig
 
 
@@ -14,7 +14,7 @@ def register(request):
         if field not in data:
             return Response({"error": f"{field} is required"}, status=status.HTTP_400_BAD_REQUEST)
     try:
-        user=User.create(data["username"], data["phone_number"], data["password"])
+        user=Auth.create(data["username"], data["phone_number"], data["password"])
         return Response({"message": "user registered successfully", "user": user.to_dict()}, status=status.HTTP_201_CREATED)
     except ValueError as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -39,7 +39,7 @@ def login(request):
 
     if not user_data:
         return Response({"error": "invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
-    user=User.from_dict(user_data)
+    user=Auth.from_dict(user_data)
     if not user.check_password(password):
         return Response({"error": "invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 

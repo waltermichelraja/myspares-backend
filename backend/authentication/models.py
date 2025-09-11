@@ -7,7 +7,7 @@ from .admin import *
 import re
 
 
-class User:
+class Auth:
     def __init__(self, username, phone_number, password_hash, created_at=None, _id=None):
         self.id=_id
         self.username=username
@@ -84,7 +84,7 @@ class User:
 
 class TokenManager:
     @staticmethod
-    def generate_tokens(user: User):
+    def generate_tokens(user: Auth):
         refresh=RefreshToken()
         refresh["user_id"]=str(user.id)
         refresh["phone_number"]=user.phone_number
