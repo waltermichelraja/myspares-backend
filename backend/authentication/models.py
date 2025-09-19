@@ -1,8 +1,8 @@
 from pymongo.errors import PyMongoError
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timezone
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
+from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
 from .admin import *
 import re
 
@@ -19,19 +19,17 @@ class Auth:
     def validate_fields(username, phone_number, password):
         if not re.match(r"^[A-Za-z ]+$", str(username)) or not re.match(r"^.{4,24}$", str(username)):
             raise ValueError("invalid username: " + (
-                    "username too long/short" if not re.match(r"^.{4,24}$", str(username)) 
-                    else "invalid characters"
-                )
-            )
+                "username too long/short" if not re.match(r"^.{4,24}$", str(username))
+                else "invalid characters"
+            ))
         if not re.match(r"^\d{10,15}$", str(phone_number)):
             raise ValueError("invalid phone number: must be 10–15 digits")
 
         if not re.match(r"^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[\W_]).{4,16}$", str(password)):
             raise ValueError("invalid password: " + (
-                    "password too long/short" if not re.match(r"^.{4,16}$", str(password))
-                    else "must include uppercase, lowercase, number, and special character"
-                )
-            )
+                "password too long/short" if not re.match(r"^.{4,16}$", str(password))
+                else "must include uppercase, lowercase, number, and special character"
+            ))
 
     @staticmethod
     def hash_password(password):
@@ -124,3 +122,11 @@ class TokenManager:
         except PyMongoError as e:
             print(f"[DB ERROR] failed to check blacklist: {e}")
             raise RuntimeError("server error: unable to check token blacklist")
+
+    @staticmethod
+    def verify_access_token(token: str):
+        try:
+            access=AccessToken(token)
+            return dict(access.payload)
+        except(TokenError, InvalidToken) as e:
+            raise ValueError("invalid or expired access token") from e
