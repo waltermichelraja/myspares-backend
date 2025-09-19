@@ -1,3 +1,6 @@
-from django.contrib import admin
+from django.conf import settings
 
-# Register your models here.
+
+users_collection=settings.MONGO_DB["users"]
+products_collection=settings.MONGO_DB["products"]
+carts_collection=settings.MONGO_DB["carts"]
