@@ -21,6 +21,7 @@ def register(request):
     except RuntimeError as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 @api_view(["POST"])
 def login(request):
     data=request.data
@@ -78,7 +79,6 @@ def logout(request):
         return Response({"error": "refresh token required"}, status=status.HTTP_400_BAD_REQUEST)
     try:
         TokenManager.blacklist_token(refresh_token)
-
         response=JsonResponse({"message": "logged out successfully"})
         response.delete_cookie("refresh_token", path=AuthenticationConfig.COOKIE_SETTINGS["path"])
         return response
