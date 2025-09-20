@@ -39,6 +39,20 @@ class Cart:
             _id=str(data.get("_id")) if data.get("_id") else None,
         )
 
+    @classmethod
+    def create_cart(cls, user_id):
+        now=datetime.now(timezone.utc)
+        cart_doc={
+            "user_id": ObjectId(user_id),
+            "items": [],
+            "subtotal": 0,
+            "created_at": now,
+            "updated_at": now,
+        }
+        result=carts_collection.insert_one(cart_doc)
+        cart_doc["_id"]=result.inserted_id
+        return cls.from_dict(cart_doc)
+
     @staticmethod
     def calculate_subtotal(items):
         subtotal=0
