@@ -2,7 +2,7 @@ from rest_framework.decorators import api_view, authentication_classes, permissi
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Cart
+from .models import Cart, Address
 from authentication.models import TokenManager
 
 
@@ -63,3 +63,31 @@ def remove_from_cart(request, user_id, product_id):
         return Response({"cart": cart.to_dict()}, status=status.HTTP_200_OK)
     except ValueError as e:
         return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(["GET"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def get_address(request, user_id):
+    auth=require_auth(request, user_id)
+    if isinstance(auth, Response):
+        return auth
+    try:
+        address=Address.get_address(user_id)
+        return Response({"address": address.to_dict()}, status=status.HTTP_200_OK)
+    except ValueError as e:
+        return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(["PUT"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def update_address(request, user_id):
+    auth=require_auth(request, user_id)
+    if isinstance(auth, Response):
+        return auth
+    try:
+        address=Address.update_address(user_id, **request.data)
+        return Response({"address": address.to_dict()}, status=status.HTTP_200_OK)
+    except ValueError as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
