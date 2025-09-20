@@ -73,7 +73,7 @@ def get_address(request, user_id):
     if isinstance(auth, Response):
         return auth
     try:
-        address=Address.get_address(user_id)
+        address=Address.address_fetch(user_id)
         return Response({"address": address.to_dict()}, status=status.HTTP_200_OK)
     except ValueError as e:
         return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
@@ -87,7 +87,7 @@ def update_address(request, user_id):
     if isinstance(auth, Response):
         return auth
     try:
-        address=Address.update_address(user_id, **request.data)
+        address=Address.address_update(user_id, **request.data)
         return Response({"address": address.to_dict()}, status=status.HTTP_200_OK)
     except ValueError as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
