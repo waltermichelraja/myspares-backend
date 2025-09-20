@@ -12,7 +12,6 @@ class Cart:
         self.created_at=created_at or datetime.now(timezone.utc)
         self.updated_at=updated_at or datetime.now(timezone.utc)
 
-
     def to_dict(self):
         return {
             "_id": str(self.id) if self.id else None,
@@ -56,7 +55,7 @@ class Cart:
                 from_ts=validity.get("from", 0)
                 to_ts=validity.get("to", 0)
                 if from_ts <= now <= to_ts:
-                    price=price * (1-(discount/100))
+                    price=price*(1-(discount/100))
             subtotal+=price*item["quantity"]
         return round(subtotal, 2)
 
@@ -71,12 +70,17 @@ class Cart:
     def add_item(cls, user_id, product_id, quantity=1):
         if not users_collection.find_one({"_id": ObjectId(user_id)}):
             raise ValueError("user not found")
-        if not products_collection.find_one({"_id": ObjectId(product_id)}):
+        product=products_collection.find_one({"_id": ObjectId(product_id)})
+        if not product:
             raise ValueError("product not found")
-
+        stock=product.get("stock", 0)
+        if stock<=0:
+            raise ValueError("product is out of stock")
         now=datetime.now(timezone.utc)
         cart=carts_collection.find_one({"user_id": ObjectId(user_id)})
         if not cart:
+            if quantity> stock:
+                raise ValueError(f"only {stock} items available in stock")
             cart_doc={
                 "user_id": ObjectId(user_id),
                 "items": [{"product_id": ObjectId(product_id), "quantity": quantity, "added_at": now}],
@@ -87,16 +91,19 @@ class Cart:
             result=carts_collection.insert_one(cart_doc)
             cart_doc["_id"]=result.inserted_id
             return cls.from_dict(cart_doc)
-
         item_found=False
         for item in cart["items"]:
             if item["product_id"]==ObjectId(product_id):
-                item["quantity"]+=quantity
+                new_quantity=item["quantity"]+quantity
+                if new_quantity>stock:
+                    raise ValueError(f"only {stock} items available in stock")
+                item["quantity"]=new_quantity
                 item_found=True
                 break
         if not item_found:
+            if quantity>stock:
+                raise ValueError(f"only {stock} items available in stock")
             cart["items"].append({"product_id": ObjectId(product_id), "quantity": quantity, "added_at": now})
-
         cart["updated_at"]=now
         cart["subtotal"]=cls.calculate_subtotal(cart["items"])
         carts_collection.update_one({"_id": cart["_id"]}, {"$set": cart})
@@ -118,7 +125,6 @@ class Cart:
         cart_doc=carts_collection.find_one({"user_id": ObjectId(user_id)})
         if not cart_doc:
             return cls(user_id=user_id)
-
         cart_doc["subtotal"]=cls.calculate_subtotal(cart_doc["items"])
         carts_collection.update_one({"_id": cart_doc["_id"]}, {"$set": {"subtotal": cart_doc["subtotal"], "updated_at": now}})
         return cls.from_dict(cart_doc)
