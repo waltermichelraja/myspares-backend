@@ -1,5 +1,6 @@
 from pymongo.errors import PyMongoError
 from datetime import datetime, timezone
+from client.models import Cart
 from .admin import *
 import re
 
@@ -679,7 +680,6 @@ class Product:
         })
         if not product_doc:
             raise ValueError("product not found")
-
         allowed_fields=["product_name", "description", "price", "stock", "image_url", "offers"]
         update_data={}
         for field in allowed_fields:
@@ -723,7 +723,6 @@ class Product:
                     update_data["offers"]=structured_offer
                 else:
                     update_data[field]=str(updates[field]).strip()
-
         if not update_data:
             raise ValueError("no valid fields to update")
         result=products_collection.update_one(
@@ -733,4 +732,12 @@ class Product:
         if result.modified_count==0:
             raise RuntimeError("update failed")
         updated_doc=products_collection.find_one({"_id": product_doc["_id"]})
+        now=datetime.now(timezone.utc)
+        affected_carts=carts_collection.find({"items.product_id": updated_doc["_id"]})
+        for cart in affected_carts:
+            new_subtotal=Cart.calculate_subtotal(cart["items"])
+            carts_collection.update_one(
+                {"_id": cart["_id"]},
+                {"$set": {"subtotal": new_subtotal, "updated_at": now}}
+            )
         return cls.from_dict(updated_doc)
