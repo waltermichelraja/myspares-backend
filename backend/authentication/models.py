@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
 from .admin import *
+from client.models import Cart, Address
 import re
 
 
@@ -73,8 +74,21 @@ class Auth:
                 "created_at": datetime.now(timezone.utc),
             }
             result=users_collection.insert_one(user_doc)
-            user_doc["_id"]=result.inserted_id
-            return cls.from_dict(user_doc)
+            user_doc["_id"] = result.inserted_id
+            user=cls.from_dict(user_doc)
+            try:
+                Cart.create_cart(user_id=str(user.id))
+            except Exception as cart_err:
+                print(f"[WARN] failed to auto-create cart for user {user.id}: {cart_err}")
+            try:
+                Address.create(
+                    user_id=str(user.id),
+                    name=user.username,
+                    phone_number=user.phone_number
+                )
+            except Exception as addr_err:
+                print(f"[WARN] failed to auto-create address for user {user.id}: {addr_err}")
+            return user
         except PyMongoError as e:
             print(f"[DB ERROR] failed to insert/find user: {e}")
             raise RuntimeError("database error: unable to register user")
