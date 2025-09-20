@@ -6,7 +6,7 @@ from .admin import *
 class Cart:
     def __init__(self, user_id, items=None, created_at=None, updated_at=None, subtotal=0, _id=None):
         self.id=_id
-        self.user_id=user_id
+        self.user_id=ObjectId(user_id) if not isinstance(user_id, ObjectId) else user_id
         self.items=items or []
         self.subtotal=subtotal
         self.created_at=created_at or datetime.now(timezone.utc)
@@ -31,11 +31,11 @@ class Cart:
     @classmethod
     def from_dict(cls, data):
         return cls(
-            user_id=str(data["user_id"]),
+            user_id=data["user_id"],
             items=data.get("items", []),
+            subtotal=data.get("subtotal", 0),
             created_at=data.get("created_at"),
             updated_at=data.get("updated_at"),
-            subtotal=data.get("subtotal", 0),
             _id=str(data.get("_id")) if data.get("_id") else None,
         )
 
@@ -128,4 +128,88 @@ class Cart:
         cart_doc["subtotal"]=cls.calculate_subtotal(cart_doc["items"])
         carts_collection.update_one({"_id": cart_doc["_id"]}, {"$set": {"subtotal": cart_doc["subtotal"], "updated_at": now}})
         return cls.from_dict(cart_doc)
+
+
+class Address:
+    def __init__(self, user_id, name=None, phone_number=None, address_line1=None, address_line2=None,
+                 city=None, state=None, pincode=None, country=None, updated_at=None, _id=None):
+        self.id=_id
+        self.user_id=ObjectId(user_id) if not isinstance(user_id, ObjectId) else user_id
+        self.name=name
+        self.phone_number=phone_number
+        self.address_line1=address_line1
+        self.address_line2=address_line2
+        self.city=city
+        self.state=state
+        self.country=country
+        self.pincode=pincode
+        self.updated_at=updated_at or datetime.now(timezone.utc)
+
+    def to_dict(self):
+        return {
+            "_id": str(self.id) if self.id else None,
+            "user_id": str(self.user_id),
+            "name": self.name,
+            "phone_number": self.phone_number,
+            "address_line1": self.address_line1,
+            "address_line2": self.address_line2,
+            "city": self.city,
+            "state": self.state,
+            "country": self.country,
+            "pincode": self.pincode,
+            "updated_at": str(self.updated_at)
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls(
+            user_id=data["user_id"],
+            name=data.get("name"),
+            phone_number=data.get("phone_number"),
+            address_line1=data.get("address_line1"),
+            address_line2=data.get("address_line2"),
+            city=data.get("city"),
+            state=data.get("state"),
+            country=data.get("country"),
+            pincode=data.get("pincode"),
+            updated_at=data.get("updated_at"),
+            _id=data.get("_id")
+        )
+
+    @classmethod
+    def create_address(cls, user_id, name, phone_number):
+        doc={
+            "user_id": ObjectId(user_id),
+            "name": str(name),
+            "phone_number": str(phone_number),
+            "address_line1": "",
+            "address_line2": "",
+            "city": "",
+            "state": "",
+            "country": "",
+            "pincode": "",
+            "updated_at": datetime.now(timezone.utc),
+        }
+        result=addresses_collection.insert_one(doc)
+        doc["_id"]=result.inserted_id
+        return cls.from_dict(doc)
+
+    @classmethod
+    def address_fetch(cls, user_id):
+        doc=addresses_collection.find_one({"user_id": ObjectId(user_id)})
+        if not doc:
+            return cls(user_id=user_id)
+        return cls.from_dict(doc)
+
+    @classmethod
+    def address_update(cls, user_id, **kwargs):
+        allowed_fields=["name", "phone_number", "address_line1", "address_line2",
+                          "city", "state", "pincode", "country"]
+        update_data={field: kwargs[field] for field in allowed_fields if field in kwargs}
+        if not update_data:
+            raise ValueError("no valid fields provided for update")
+        update_data["updated_at"]=datetime.now(timezone.utc)
+        addresses_collection.update_one({"user_id": ObjectId(user_id)}, {"$set": update_data}, upsert=True)
+        doc=addresses_collection.find_one({"user_id": ObjectId(user_id)})
+        return cls.from_dict(doc)
     
