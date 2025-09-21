@@ -55,10 +55,15 @@ class Cart:
 
     @staticmethod
     def calculate_subtotal(items):
-        subtotal=0
+        if not items:
+            return 0.0
         now=datetime.now(timezone.utc).timestamp()
+        product_ids=[item["product_id"] for item in items]
+        products=products_collection.find({"_id": {"$in": product_ids}})
+        product_map={p["_id"]: p for p in products}
+        subtotal=0
         for item in items:
-            product=products_collection.find_one({"_id": item["product_id"]})
+            product=product_map.get(item["product_id"])
             if not product:
                 continue
             price=product.get("price", 0)
@@ -69,7 +74,7 @@ class Cart:
                 from_ts=validity.get("from", 0)
                 to_ts=validity.get("to", 0)
                 if from_ts <= now <= to_ts:
-                    price=price*(1-(discount/100))
+                    price*=(1-(discount/100))
             subtotal+=price*item["quantity"]
         return round(subtotal, 2)
 
@@ -93,7 +98,7 @@ class Cart:
         now=datetime.now(timezone.utc)
         cart=carts_collection.find_one({"user_id": ObjectId(user_id)})
         if not cart:
-            if quantity> stock:
+            if quantity>stock:
                 raise ValueError(f"only {stock} items available in stock")
             cart_doc={
                 "user_id": ObjectId(user_id),
