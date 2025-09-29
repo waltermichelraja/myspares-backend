@@ -21,9 +21,9 @@ a fully functional backend service for an e-commerce platform, providing secure 
 | get address      | `/api/client/<user_id>/address/`                  | `GET`    | `None`           |
 | update address   | `/api/client/<user_id>/address/update/`           | `PUT`    | `address fields` |
 
+### [Utility](backend/utility/urls.py) [api/utils/]
 
-
-### [Admin](backend/admin/urls.py) [urls.py]
+### [Admin](backend/admin/urls.py) [api/admin/]
 
 
 ## Installation & Setup
