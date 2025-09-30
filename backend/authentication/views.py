@@ -75,10 +75,14 @@ def refresh(request):
 @api_view(["POST"])
 def logout(request):
     refresh_token=request.COOKIES.get("refresh_token")
-    if not refresh_token:
-        return Response({"error": "refresh token required"}, status=status.HTTP_400_BAD_REQUEST)
+    access_header=request.headers.get("Authorization", "")
+    access_token=access_header.replace("Bearer ", "") if access_header.startswith("Bearer ") else None
+    if not refresh_token or not access_token:
+        return Response({"error": "refresh and access tokens required"}, status=status.HTTP_400_BAD_REQUEST)
     try:
-        TokenManager.blacklist_token(refresh_token)
+        payload=TokenManager.verify_access_token(access_token)
+        user_id=payload.get("user_id")
+        TokenManager.blacklist_token(refresh_token, access_token, user_id=user_id)
         response=JsonResponse({"message": "logged out successfully"})
         response.delete_cookie("refresh_token", path=AuthenticationConfig.COOKIE_SETTINGS["path"])
         return response
