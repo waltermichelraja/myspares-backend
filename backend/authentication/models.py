@@ -74,14 +74,14 @@ class Auth:
                 "created_at": datetime.now(timezone.utc),
             }
             result=users_collection.insert_one(user_doc)
-            user_doc["_id"] = result.inserted_id
+            user_doc["_id"]=result.inserted_id
             user=cls.from_dict(user_doc)
             try:
                 Cart.create_cart(user_id=str(user.id))
             except Exception as cart_err:
                 print(f"[WARN] failed to auto-create cart for user {user.id}: {cart_err}")
             try:
-                Address.create(
+                Address.create_address(
                     user_id=str(user.id),
                     name=user.username,
                     phone_number=user.phone_number
@@ -119,26 +119,41 @@ class TokenManager:
             raise ValueError("invalid or expired refresh token") from e
 
     @staticmethod
-    def blacklist_token(refresh_token: str):
+    def blacklist_token(refresh_token: str, access_token: str=None, user_id: str=None):
         try:
-            blacklisted_tokens_collection.insert_one({
-                "token": refresh_token,
-                "blacklisted_at": datetime.now(timezone.utc)
-            })
+            doc={
+                "user_id": user_id,
+                "token": {
+                    "refresh": refresh_token,
+                    "access": access_token,
+                },
+                "blacklisted_at": datetime.now(timezone.utc),
+            }
+            blacklisted_tokens_collection.insert_one(doc)
         except PyMongoError as e:
-            print(f"[DB ERROR] failed to blacklist token: {e}")
-            raise RuntimeError("server error: unable to blacklist token")
+            print(f"[DB ERROR] failed to blacklist tokens: {e}")
+            raise RuntimeError("server error: unable to blacklist tokens")
 
     @staticmethod
-    def is_blacklisted(refresh_token: str)->bool:
+    def is_blacklisted_refresh(refresh_token: str) -> bool:
         try:
-            return blacklisted_tokens_collection.find_one({"token": refresh_token}) is not None
+            return blacklisted_tokens_collection.find_one({"token.refresh": refresh_token}) is not None
         except PyMongoError as e:
-            print(f"[DB ERROR] failed to check blacklist: {e}")
+            print(f"[DB ERROR] failed to check refresh blacklist: {e}")
+            raise RuntimeError("server error: unable to check token blacklist")
+
+    @staticmethod
+    def is_blacklisted_access(access_token: str) -> bool:
+        try:
+            return blacklisted_tokens_collection.find_one({"token.access": access_token}) is not None
+        except PyMongoError as e:
+            print(f"[DB ERROR] failed to check access blacklist: {e}")
             raise RuntimeError("server error: unable to check token blacklist")
 
     @staticmethod
     def verify_access_token(token: str):
+        if TokenManager.is_blacklisted_access(token):
+            raise ValueError("blacklisted access token")
         try:
             access=AccessToken(token)
             return dict(access.payload)
