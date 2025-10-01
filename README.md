@@ -9,16 +9,16 @@ a fully functional backend service for an e-commerce platform, providing secure 
 | --------- | ----------------------- | ------ | ------------------------------------------- |
 | register  | `/api/auth/register/`   | `POST` | `username`, `phone_number`, `password`      |
 | login     | `/api/auth/login/`      | `POST` | `phone_number`, `password`                  |
-| refresh   | `/api/auth/refresh/`    | `POST` | `None [requires {refresh_token} in cookie]` |
-| logout    | `/api/auth/logout/`     | `POST` | `None [requires {refresh_token} in cookie]` |
+| refresh   | `/api/auth/refresh/`    | `POST` | `none [COOKIE: {refresh_token}]`            |
+| logout    | `/api/auth/logout/`     | `POST` | `header: Authorization: Bearer <access_token>` `body: none [COOKIE: {refresh_token}]` |
 
 ### [Client](backend/client/urls.py)
 | Action           | Endpoint                                          | Method   | Required Fields  |
 | ---------------- | ------------------------------------------------- | -------- | ---------------- |
-| list card        | `/api/client/<user_id>/cart/`                     | `GET`    | `None`           |
-| add product      | `/api/client/<user_id>/cart/add/<product_id>/`    | `POST`   | `None`           |
-| remove product   | `/api/client/<user_id>/cart/remove/<product_id>/` | `DELETE` | `None`           |
-| get address      | `/api/client/<user_id>/address/`                  | `GET`    | `None`           |
+| list cart        | `/api/client/<user_id>/cart/`                     | `GET`    | `none`           |
+| add product      | `/api/client/<user_id>/cart/add/<product_id>/`    | `POST`   | `none`           |
+| remove product   | `/api/client/<user_id>/cart/remove/<product_id>/` | `DELETE` | `none`           |
+| get address      | `/api/client/<user_id>/address/`                  | `GET`    | `none`           |
 | update address   | `/api/client/<user_id>/address/update/`           | `PUT`    | `address fields` |
 
 ### [Utility](backend/utility/urls.py) [api/utils/]
