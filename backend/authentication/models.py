@@ -1,6 +1,6 @@
 from pymongo.errors import PyMongoError
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
 from .admin import *
@@ -159,3 +159,14 @@ class TokenManager:
             return dict(access.payload)
         except(TokenError, InvalidToken) as e:
             raise ValueError("invalid or expired access token") from e
+
+    @staticmethod
+    def cleanup_old_tokens(days=7):
+        cutoff=datetime.now(timezone.utc)-timedelta(days=days)
+        try:
+            result=blacklisted_tokens_collection.delete_many(
+                {"blacklisted_at": {"$lt": cutoff}}
+            )
+            print(f"[CLEANUP] removed {result.deleted_count} old blacklisted tokens") # DEBUG
+        except PyMongoError as e:
+            print(f"[DB ERROR] failed to clean old blacklisted tokens: {e}") # DEBUG
