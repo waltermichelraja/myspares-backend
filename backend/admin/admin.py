@@ -12,3 +12,5 @@ categories_collection.create_index([("model_id", 1), ("category_code", 1)], uniq
 products_collection.create_index([("category_id", 1), ("product_code", 1)], unique=True)
 
 carts_collection=settings.MONGO_DB["carts"]
+
+audits_collection=settings.MONGO_DB["audits"]
