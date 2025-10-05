@@ -79,7 +79,7 @@ class Auth:
             try:
                 Cart.create_cart(user_id=str(user.id))
             except Exception as cart_err:
-                print(f"[WARN] failed to auto-create cart for user {user.id}: {cart_err}")
+                logger.warning(f"failed to auto-create cart for user {user.id}: {cart_err}")
             try:
                 Address.create_address(
                     user_id=str(user.id),
@@ -87,10 +87,10 @@ class Auth:
                     phone_number=user.phone_number
                 )
             except Exception as addr_err:
-                print(f"[WARN] failed to auto-create address for user {user.id}: {addr_err}")
+                logger.warning(f"failed to auto-create address for user {user.id}: {addr_err}")
             return user
         except PyMongoError as e:
-            print(f"[DB ERROR] failed to insert/find user: {e}")
+            logger.error(f"failed to insert/find user: {e}")
             raise RuntimeError("database error: unable to register user")
 
 
@@ -131,7 +131,7 @@ class TokenManager:
             }
             blacklisted_tokens_collection.insert_one(doc)
         except PyMongoError as e:
-            print(f"[DB ERROR] failed to blacklist tokens: {e}")
+            logger.error(f"failed to blacklist tokens: {e}")
             raise RuntimeError("server error: unable to blacklist tokens")
 
     @staticmethod
@@ -139,7 +139,7 @@ class TokenManager:
         try:
             return blacklisted_tokens_collection.find_one({"token.refresh": refresh_token}) is not None
         except PyMongoError as e:
-            print(f"[DB ERROR] failed to check refresh blacklist: {e}")
+            logger.error(f"failed to check refresh blacklist: {e}")
             raise RuntimeError("server error: unable to check token blacklist")
 
     @staticmethod
@@ -147,7 +147,7 @@ class TokenManager:
         try:
             return blacklisted_tokens_collection.find_one({"token.access": access_token}) is not None
         except PyMongoError as e:
-            print(f"[DB ERROR] failed to check access blacklist: {e}")
+            logger.error(f"failed to check access blacklist: {e}")
             raise RuntimeError("server error: unable to check token blacklist")
 
     @staticmethod
@@ -167,6 +167,6 @@ class TokenManager:
             result=blacklisted_tokens_collection.delete_many(
                 {"blacklisted_at": {"$lt": cutoff}}
             )
-            print(f"[CLEANUP] removed {result.deleted_count} old blacklisted tokens") # DEBUG
+            logger.info(f"removed {result.deleted_count} old blacklisted tokens")
         except PyMongoError as e:
-            print(f"[DB ERROR] failed to clean old blacklisted tokens: {e}") # DEBUG
+            logger.error(f"failed to clean old blacklisted tokens: {e}")
