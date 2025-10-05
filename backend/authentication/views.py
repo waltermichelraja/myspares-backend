@@ -60,7 +60,7 @@ def refresh(request):
         return Response({"error": "refresh token required"}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
-        if TokenManager.is_blacklisted(refresh_token):
+        if TokenManager.is_blacklisted_refresh(refresh_token):
             return Response({"error": "refresh token has been revoked"}, status=status.HTTP_401_UNAUTHORIZED)
         tokens=TokenManager.refresh_tokens(refresh_token)
         response=JsonResponse({"access": tokens["access"]})
