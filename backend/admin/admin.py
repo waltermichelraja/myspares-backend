@@ -1,3 +1,4 @@
+import logging
 from django.conf import settings
 
 
@@ -14,3 +15,12 @@ products_collection.create_index([("category_id", 1), ("product_code", 1)], uniq
 carts_collection=settings.MONGO_DB["carts"]
 
 audits_collection=settings.MONGO_DB["audits"]
+
+logger=logging.getLogger("admin_events")
+logger.setLevel(logging.INFO)
+if not logger.handlers:
+    ch=logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    formatter=logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
