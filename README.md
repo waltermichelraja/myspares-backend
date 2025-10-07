@@ -51,3 +51,7 @@ pip install -r requirements.txt
 # run django server
 python manage.py runserver
 ```
+
+## Testing
+
+> *postman workspace: [MySpares Workspace](https://www.postman.com/waltermichelraja/myspares-workspace/overview)*
