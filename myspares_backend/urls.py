@@ -20,4 +20,7 @@ from django.urls import path, include
 urlpatterns = [
     path('dj-admin/', admin.site.urls),   # Django’s default admin
     path('api/', include('api.urls')),  # API routes
+    path('auth/', include('authentication.urls')),  # ✅ updated
+
+    
 ]
