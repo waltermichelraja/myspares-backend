@@ -18,6 +18,10 @@ MONGO_DB_NAME="MySpares_db"
 client=MongoClient(MONGO_URI)
 MONGO_DB=client[MONGO_DB_NAME]
 
+TWILIO_ACCOUNT_SID=os.getenv("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN=os.getenv("TWILIO_AUTH_TOKEN")
+TWILIO_VERIFY_SID=os.getenv("TWILIO_VERIFY_SID")
+
 INSTALLED_APPS = [
 #    'django.contrib.admin',
     'django.contrib.auth',
