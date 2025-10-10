@@ -4,6 +4,7 @@ from datetime import datetime, timezone, timedelta
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
 from .admin import *
+from .twilio_service import *
 from client.models import Cart, Address
 import re
 
@@ -66,7 +67,6 @@ class Auth:
         try:
             if users_collection.find_one({"phone_number": str(phone_number)}):
                 raise ValueError("phone number already registered")
-
             user_doc={
                 "username": str(username),
                 "phone_number": str(phone_number),
@@ -92,6 +92,74 @@ class Auth:
         except PyMongoError as e:
             logger.error(f"failed to insert/find user: {e}")
             raise RuntimeError("database error: unable to register user")
+
+    @classmethod
+    def create_temp_user(cls, username, phone_number, password):
+        cls.validate_fields(username, phone_number, password)
+        phone_number=normalize_number(phone_number)
+        try:
+            if users_collection.find_one({"phone_number": phone_number}):
+                raise ValueError("phone number already registered")
+            temporary_users_collection.update_one(
+                {"phone_number": phone_number},
+                {"$set": {
+                    "username": str(username),
+                    "phone_number": str(phone_number),
+                    "password_hash": cls.hash_password(password),
+                    "created_at": datetime.now(timezone.utc)
+                }},
+                upsert=True
+            )
+        except PyMongoError as e:
+            raise RuntimeError(f"failed to save temporary user: {e}")
+
+    @classmethod
+    def send_otp_to_user(cls, phone_number):
+        try:
+            return send_otp(normalize_number(phone_number))
+        except Exception as e:
+            raise RuntimeError(f"failed to send OTP: {e}")
+
+    @classmethod
+    def verify_user_otp(cls, phone_number, code):
+        try:
+            return verify_otp(normalize_number(phone_number), code)
+        except Exception as e:
+            raise RuntimeError(f"OTP verification failed: {e}")
+
+    @classmethod
+    def promote_temp_user_to_main(cls, phone_number):
+        phone_number=normalize_number(phone_number)
+        temp_user=temporary_users_collection.find_one({"phone_number": (phone_number)})
+        if not temp_user:
+            raise ValueError("no pending registration for this number")
+        user_doc={
+            "username": temp_user["username"],
+            "phone_number": temp_user["phone_number"],
+            "password_hash": temp_user["password_hash"],
+            "created_at": datetime.now(timezone.utc),
+        }
+        try:
+            result=users_collection.insert_one(user_doc)
+            user_doc["_id"]=result.inserted_id
+            user=cls.from_dict(user_doc)
+            try:
+                Cart.create_cart(user_id=str(user.id))
+            except Exception as cart_err:
+                logger.warning(f"failed to auto-create cart for user {user.id}: {cart_err}")
+            try:
+                Address.create_address(
+                    user_id=str(user.id),
+                    name=user.username,
+                    phone_number=user.phone_number
+                )
+            except Exception as addr_err:
+                logger.warning(f"failed to auto-create address for user {user.id}: {addr_err}")
+            temporary_users_collection.delete_one({"phone_number": (phone_number)})
+            return user
+        except PyMongoError as e:
+            logger.error(f"failed to promote temporary user: {e}")
+            raise RuntimeError("database error: unable to create verified user")
 
 
 class TokenManager:
