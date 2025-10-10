@@ -7,6 +7,8 @@ users_collection.create_index("phone_number", unique=True)
 
 blacklisted_tokens_collection=settings.MONGO_DB["blacklisted_tokens"]
 
+temporary_users_collection=settings.MONGO_DB["temporary_users"]
+
 logger=logging.getLogger("authentication_events")
 logger.setLevel(logging.INFO)
 if not logger.handlers:
