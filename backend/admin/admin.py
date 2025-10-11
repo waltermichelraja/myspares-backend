@@ -18,6 +18,8 @@ audits_collection=settings.MONGO_DB["audits"]
 
 temporary_users_collection=settings.MONGO_DB["temporary_users"]
 
+blacklisted_tokens_collection=settings.MONGO_DB["blacklisted_tokens"]
+
 logger=logging.getLogger("admin_events")
 logger.setLevel(logging.INFO)
 if not logger.handlers:
