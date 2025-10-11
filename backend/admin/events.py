@@ -1,6 +1,6 @@
 import threading
 from bson import ObjectId
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pymongo.errors import PyMongoError
 from pymongo import UpdateOne
 from client.models import Cart
@@ -135,6 +135,11 @@ def handle_product_delete(product_id: ObjectId):
         )
         logger.info(f"[CART CLEANUP] removed deleted product {product_id} from cart {cart['_id']}")
 
+def cleanup_temp_users(hours: int=24):
+    expiry=datetime.now(timezone.utc)-timedelta(hours=hours)
+    deleted=temporary_users_collection.delete_many({"created_at": {"$lt": expiry}})
+    logger.info(f"[STARTUP CLEANUP] removed {deleted.deleted_count} temporary users older than {hours}h")
+
 def watch_collection(coll):
     pipeline=[{"$match": {"operationType": {"$in": ["insert", "update", "delete"]}}}]
     while True:
@@ -158,3 +163,7 @@ def start_watchers():
         t=threading.Thread(target=watch_collection, args=(coll,), daemon=True)
         t.start()
         logger.info(f"[WATCHER STARTED] watching collection {coll.name}")
+    try:
+        cleanup_temp_users(hours=24)
+    except Exception as e:
+        logger.exception(f"[STARTUP CLEANUP ERROR] failed to cleanup temporary users: {e}")
