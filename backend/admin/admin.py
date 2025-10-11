@@ -16,6 +16,8 @@ carts_collection=settings.MONGO_DB["carts"]
 
 audits_collection=settings.MONGO_DB["audits"]
 
+temporary_users_collection=settings.MONGO_DB["temporary_users"]
+
 logger=logging.getLogger("admin_events")
 logger.setLevel(logging.INFO)
 if not logger.handlers:
