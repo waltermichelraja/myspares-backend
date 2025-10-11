@@ -227,14 +227,3 @@ class TokenManager:
             return dict(access.payload)
         except(TokenError, InvalidToken) as e:
             raise ValueError("invalid or expired access token") from e
-
-    @staticmethod
-    def cleanup_old_tokens(days=7):
-        cutoff=datetime.now(timezone.utc)-timedelta(days=days)
-        try:
-            result=blacklisted_tokens_collection.delete_many(
-                {"blacklisted_at": {"$lt": cutoff}}
-            )
-            logger.info(f"removed {result.deleted_count} old blacklisted tokens")
-        except PyMongoError as e:
-            logger.error(f"failed to clean old blacklisted tokens: {e}")
