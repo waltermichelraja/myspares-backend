@@ -17,11 +17,11 @@ a fully functional backend service for an e-commerce platform, providing secure 
 ### [Client](backend/client/urls.py)
 | Action           | Endpoint                                          | Method   | Required Fields  |
 | ---------------- | ------------------------------------------------- | -------- | ---------------- |
-| list cart        | `/api/client/<user_id>/cart/`                     | `GET`    | `none`           |
-| add product      | `/api/client/<user_id>/cart/add/<product_id>/`    | `POST`   | `none`           |
-| remove product   | `/api/client/<user_id>/cart/remove/<product_id>/` | `DELETE` | `none`           |
-| get address      | `/api/client/<user_id>/address/`                  | `GET`    | `none`           |
-| update address   | `/api/client/<user_id>/address/update/`           | `PUT`    | *[address fields](backend/client/models.py#L171)* |
+| list cart        | `/api/client/<user_id>/cart/`                     | `GET`    | `header: Authorization: Bearer <access_token>`           |
+| add product      | `/api/client/<user_id>/cart/add/<product_id>/`    | `POST`   | `header: Authorization: Bearer <access_token>`           |
+| remove product   | `/api/client/<user_id>/cart/remove/<product_id>/` | `DELETE` | `header: Authorization: Bearer <access_token>`           |
+| get address      | `/api/client/<user_id>/address/`                  | `GET`    | `header: Authorization: Bearer <access_token>`           |
+| update address   | `/api/client/<user_id>/address/update/`           | `PUT`    | `header: Authorization: Bearer <access_token>` *[address fields](backend/client/models.py#L171)* |
 
 ### [Utility](backend/utility/urls.py) [api/utils/]
 
