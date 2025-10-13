@@ -38,15 +38,15 @@ def recalculate_cart_subtotals(product_id: ObjectId):
                 {"_id": cart["_id"]},
                 {"$set": {"subtotal": new_subtotal, "updated_at": now}}
             )
-            logger.info(f"[CART UPDATED] cart {cart['_id']} recalculated due to change in product {product_id}")
+            logger.info(f"[UPDATE CART] cart {cart['_id']} recalculated due to change in product {product_id}")
         except Exception as e:
-            logger.exception(f"[CART UPDATE ERROR] failed to recalculate cart {cart['_id']} for product {product_id}: {e}")
+            logger.exception(f"[UPDATE CART ERROR] failed to recalculate cart {cart['_id']} for product {product_id}: {e}")
 
 def handle_stock_decrease(product_id: ObjectId, new_stock: int):
     now=datetime.now(timezone.utc)
-    if new_stock <= 0:
+    if new_stock<=0:
         handle_product_delete(product_id)
-        logger.warning(f"[STOCK ZERO] product {product_id} removed from all carts (out of stock)")
+        logger.warning(f"[ZERO STOCK] product {product_id} removed from all carts (out of stock)")
         return
     affected_carts=list(carts_collection.find({"items.product_id": product_id}))
     if not affected_carts:
@@ -98,10 +98,10 @@ def handle_stock_decrease(product_id: ObjectId, new_stock: int):
             {"_id": cart_id},
             {"$set": {"items": new_items, "subtotal": new_subtotal, "updated_at": now}}
         ))
-        logger.info(f"[CART ADJUSTED] cart {cart_id}: product {product_id} qty set to {new_qty}")
+        logger.info(f"[ADJUST CART] cart {cart_id}: product {product_id} quantity set to {new_qty}")
     if bulk_ops:
         carts_collection.bulk_write(bulk_ops)
-        logger.info(f"[STOCK REDISTRIBUTION] product {product_id}: total requested {total_requested}, new stock {new_stock}")
+        logger.info(f"[REDISTRIBUTE STOCK] product {product_id}: total requested {total_requested}, new stock {new_stock}")
         audits_collection.insert_one({
             "event": "stock_redistribution",
             "product_id": product_id,
@@ -117,7 +117,7 @@ def handle_product_update(change):
     offer_changed=any(k.startswith("offers") for k in updated_fields.keys())
     stock_changed="stock" in updated_fields
     if price_changed or offer_changed:
-        logger.info(f"[PRODUCT UPDATE] product {product_id} updated fields: {list(updated_fields.keys())}")
+        logger.info(f"[UPDATE PRODUCT] product {product_id} updated fields: {list(updated_fields.keys())}")
         recalculate_cart_subtotals(product_id)
     if stock_changed:
         new_stock=int(updated_fields["stock"])
@@ -133,23 +133,23 @@ def handle_product_delete(product_id: ObjectId):
             {"_id": cart["_id"]},
             {"$set": {"items": new_items, "subtotal": new_subtotal, "updated_at": now}}
         )
-        logger.info(f"[CART CLEANUP] removed deleted product {product_id} from cart {cart['_id']}")
+        logger.info(f"[CLEANUP CART] removed deleted product {product_id} from cart {cart['_id']}")
 
 def cleanup_temp_users(hours: int=12):
     expiry=datetime.now(timezone.utc)-timedelta(hours=hours)
     try:
         deleted=temporary_users_collection.delete_many({"created_at": {"$lt": expiry}})
-        logger.info(f"[USER CLEANUP] removed {deleted.deleted_count} temporary users older than {hours}h")
+        logger.info(f"[CLEANUP USER] removed {deleted.deleted_count} temporary users older than {hours}h")
     except PyMongoError as e:
-        logger.error(f"[USER CLEANUP ERROR] failed to cleanup temporary users: {e}")
+        logger.error(f"[CLEANUP USER ERROR] failed to cleanup temporary users: {e}")
 
 def cleanup_old_tokens(days=7):
     cutoff=datetime.now(timezone.utc)-timedelta(days=days)
     try:
         result=blacklisted_tokens_collection.delete_many({"blacklisted_at": {"$lt": cutoff}})
-        logger.info(f"[TOKEN CLEANUP] removed {result.deleted_count} old blacklisted tokens")
+        logger.info(f"[CLEANUP TOKEN] removed {result.deleted_count} old blacklisted tokens")
     except PyMongoError as e:
-        logger.error(f"[TOKEN CLEANUP ERROR] failed to clean old blacklisted tokens: {e}")
+        logger.error(f"[CLEANUP TOKEN ERROR] failed to clean old blacklisted tokens: {e}")
 
 def watch_collection(coll):
     pipeline=[{"$match": {"operationType": {"$in": ["insert", "update", "delete"]}}}]
