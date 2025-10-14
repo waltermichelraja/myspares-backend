@@ -79,7 +79,7 @@ class Auth:
             try:
                 Cart.create_cart(user_id=str(user.id))
             except Exception as cart_err:
-                logger.warning(f"failed to auto-create cart for user {user.id}: {cart_err}")
+                logger.warning(f"[CREATE CART ERROR] failed to auto-create cart for user {user.id}: {cart_err}")
             try:
                 Address.create_address(
                     user_id=str(user.id),
@@ -87,10 +87,10 @@ class Auth:
                     phone_number=user.phone_number
                 )
             except Exception as addr_err:
-                logger.warning(f"failed to auto-create address for user {user.id}: {addr_err}")
+                logger.warning(f"[CREATE ADDRESS ERROR] failed to auto-create address for user {user.id}: {addr_err}")
             return user
         except PyMongoError as e:
-            logger.error(f"failed to insert/find user: {e}")
+            logger.error(f"[DB ERROR] failed to insert/find user: {e}")
             raise RuntimeError("database error: unable to register user")
 
     @classmethod
@@ -146,7 +146,7 @@ class Auth:
             try:
                 Cart.create_cart(user_id=str(user.id))
             except Exception as cart_err:
-                logger.warning(f"failed to auto-create cart for user {user.id}: {cart_err}")
+                logger.warning(f"[CREATE CART ERROR] failed to auto-create cart for user {user.id}: {cart_err}")
             try:
                 Address.create_address(
                     user_id=str(user.id),
@@ -154,11 +154,11 @@ class Auth:
                     phone_number=user.phone_number
                 )
             except Exception as addr_err:
-                logger.warning(f"failed to auto-create address for user {user.id}: {addr_err}")
+                logger.warning(f"[CREATE ADDRESS ERROR] failed to auto-create address for user {user.id}: {addr_err}")
             temporary_users_collection.delete_one({"phone_number": (phone_number)})
             return user
         except PyMongoError as e:
-            logger.error(f"failed to promote temporary user: {e}")
+            logger.error(f"[DB ERROR] failed to promote temporary user: {e}")
             raise RuntimeError("database error: unable to create verified user")
 
 
@@ -199,7 +199,7 @@ class TokenManager:
             }
             blacklisted_tokens_collection.insert_one(doc)
         except PyMongoError as e:
-            logger.error(f"failed to blacklist tokens: {e}")
+            logger.error(f"[DB ERROR] failed to blacklist tokens: {e}")
             raise RuntimeError("server error: unable to blacklist tokens")
 
     @staticmethod
@@ -207,7 +207,7 @@ class TokenManager:
         try:
             return blacklisted_tokens_collection.find_one({"token.refresh": refresh_token}) is not None
         except PyMongoError as e:
-            logger.error(f"failed to check refresh blacklist: {e}")
+            logger.error(f"[DB ERROR] failed to check refresh blacklist: {e}")
             raise RuntimeError("server error: unable to check token blacklist")
 
     @staticmethod
@@ -215,7 +215,7 @@ class TokenManager:
         try:
             return blacklisted_tokens_collection.find_one({"token.access": access_token}) is not None
         except PyMongoError as e:
-            logger.error(f"failed to check access blacklist: {e}")
+            logger.error(f"[DB ERROR] failed to check access blacklist: {e}")
             raise RuntimeError("server error: unable to check token blacklist")
 
     @staticmethod
