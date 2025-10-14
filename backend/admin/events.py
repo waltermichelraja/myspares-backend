@@ -11,7 +11,10 @@ collections=[
     brands_collection,
     models_collection,
     categories_collection,
-    products_collection
+    products_collection,
+    temporary_users_collection,
+    blacklisted_tokens_collection,
+    audits_collection
 ]
 
 def log_audit(change, admin_id=None):
@@ -147,9 +150,17 @@ def cleanup_old_tokens(days=7):
     cutoff=datetime.now(timezone.utc)-timedelta(days=days)
     try:
         result=blacklisted_tokens_collection.delete_many({"blacklisted_at": {"$lt": cutoff}})
-        logger.info(f"[CLEANUP TOKEN] removed {result.deleted_count} old blacklisted tokens")
+        logger.info(f"[CLEANUP TOKEN] removed {result.deleted_count} blacklisted tokens older than {days} days")
     except PyMongoError as e:
         logger.error(f"[CLEANUP TOKEN ERROR] failed to clean old blacklisted tokens: {e}")
+
+def cleanup_old_audits(days: int=30):
+    cutoff=datetime.now(timezone.utc)-timedelta(days=days)
+    try:
+        result = audits_collection.delete_many({"timestamp": {"$lt": cutoff}})
+        logger.info(f"[CLEANUP AUDITS] removed {result.deleted_count} audit logs older than {days} days")
+    except PyMongoError as e:
+        logger.error(f"[CLEANUP AUDITS ERROR] failed to clean audits: {e}")
 
 def watch_collection(coll):
     pipeline=[{"$match": {"operationType": {"$in": ["insert", "update", "delete"]}}}]
@@ -157,13 +168,23 @@ def watch_collection(coll):
         try:
             with coll.watch(pipeline=pipeline, full_document="updateLookup") as stream:
                 for change in stream:
-                    log_audit(change)
+                    if coll != audits_collection:
+                        log_audit(change)
                     if coll==products_collection:
                         if change["operationType"]=="update":
                             handle_product_update(change)
                         elif change["operationType"]=="delete":
                             product_id=change["documentKey"]["_id"]
                             handle_product_delete(product_id)
+                    elif coll==temporary_users_collection and change["operationType"]=="insert":
+                        threading.Thread(target=cleanup_temp_users, args=(12,), daemon=True).start()
+                        logger.info("[AUTO CLEANUP] triggered temporary user cleanup")
+                    elif coll==blacklisted_tokens_collection and change["operationType"]=="insert":
+                        threading.Thread(target=cleanup_old_tokens, args=(7,), daemon=True).start()
+                        logger.info("[AUTO CLEANUP] triggered token cleanup")
+                    elif coll==audits_collection and change["operationType"]=="insert":
+                        threading.Thread(target=cleanup_old_audits, args=(30,), daemon=True).start()
+                        logger.info("[AUTO CLEANUP] triggered audit cleanup")
         except PyMongoError as e:
             logger.error(f"[WATCH ERROR] change stream error on {coll.name}: {e}. retrying...")
         except Exception as e:
@@ -174,8 +195,3 @@ def start_watchers():
         t=threading.Thread(target=watch_collection, args=(coll,), daemon=True)
         t.start()
         logger.info(f"[WATCHER STARTED] watching collection {coll.name}")
-    try:
-        cleanup_temp_users(hours=12)
-        cleanup_old_tokens(days=7)
-    except Exception as e:
-        logger.exception(f"[STARTUP CLEANUP ERROR] failed to cleanup DB: {e}")
