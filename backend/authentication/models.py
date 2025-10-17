@@ -111,6 +111,7 @@ class Auth:
                 upsert=True
             )
         except PyMongoError as e:
+            logger.error(f"[DB ERROR] failed to create temporary user: {e}")
             raise RuntimeError(f"failed to save temporary user: {e}")
 
     @classmethod
