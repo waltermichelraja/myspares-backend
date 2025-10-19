@@ -6,6 +6,8 @@ from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
 from .admin import *
 from .twilio_service import *
 from client.models import Cart, Address
+import secrets
+import hashlib
 import re
 
 
@@ -16,6 +18,14 @@ class Auth:
         self.phone_number=str(phone_number)
         self.password_hash=password_hash
         self.created_at=created_at or datetime.now(timezone.utc)
+
+    @staticmethod
+    def validate_password(password: str):
+        if not re.match(r"^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[\W_]).{4,16}$", str(password)):
+            raise ValueError("invalid password: " + (
+                "password too long/short" if not re.match(r"^.{4,16}$", str(password))
+                else "must include uppercase, lowercase, number, and special character"
+            ))
 
     @staticmethod
     def validate_fields(username, phone_number, password):
@@ -161,6 +171,118 @@ class Auth:
         except PyMongoError as e:
             logger.error(f"[DB ERROR] failed to promote temporary user: {e}")
             raise RuntimeError("database error: unable to create verified user")
+
+    @staticmethod
+    def _hash_token(token: str)->str:
+        return hashlib.sha256(token.encode()).hexdigest()
+
+    @classmethod
+    def initiate_password_reset(cls, phone_number: str, otp_channel: str = "sms", validity_minutes: int = 15):
+        phone=normalize_number(phone_number)
+        user_doc=users_collection.find_one({"phone_number": phone})
+        if not user_doc:
+            logger.info(f"[RESET PASSWORD] request for non-existent number {phone} (silent)")
+            return {"ok": True}
+        try:
+            now=datetime.now(timezone.utc)
+            expires_at=now+timedelta(minutes=validity_minutes)
+            password_resets_collection.update_one(
+                {"phone_number": phone, "used": {"$ne": True}},
+                {"$set": {
+                    "phone_number": phone,
+                    "user_id": user_doc["_id"],
+                    "verified": False,
+                    "used": False,
+                    "method": "sms",
+                    "created_at": now,
+                    "expires_at": expires_at
+                }},
+                upsert=True
+            )
+        except PyMongoError as e:
+            logger.error(f"[DB ERROR] failed to create password reset record: {e}")
+            raise RuntimeError("server error: unable to initiate password reset")
+        try:
+            status=send_otp(phone)
+            logger.info(f"[RESET PASSWORD] sent OTP to {phone}, status={status}")
+            return {"ok": True, "twilio_status": status}
+        except Exception as e:
+            logger.error(f"[TWILIO ERROR] failed to send password reset OTP to {phone}: {e}")
+            raise RuntimeError("failed to send OTP")
+
+    @classmethod
+    def verify_password_reset_otp(cls, phone_number: str, code: str, token_valid_minutes: int = 15):
+        phone=normalize_number(phone_number)
+        reset_doc=password_resets_collection.find_one({"phone_number": phone, "used": {"$ne": True}})
+        if not reset_doc:
+            raise ValueError("no pending password reset for this number")
+        try:
+            ok=verify_otp(phone, code)
+        except Exception as e:
+            logger.error(f"[TWILIO ERROR] OTP verify failed for {phone}: {e}")
+            raise RuntimeError("OTP verification failed")
+        if not ok:
+            raise ValueError("invalid or expired OTP")
+        plaintext_token=secrets.token_urlsafe(32)
+        hashed=cls._hash_token(plaintext_token)
+        now=datetime.now(timezone.utc)
+        expires_at=now+timedelta(minutes=token_valid_minutes)
+        try:
+            password_resets_collection.update_one(
+                {"_id": reset_doc["_id"]},
+                {"$set": {
+                    "hashed_token": hashed,
+                    "token_created_at": now,
+                    "expires_at": expires_at,
+                    "verified": True,
+                    "used": False
+                }}
+            )
+            logger.info(f"[RESET PASSWORD] OTP verified for {phone}, reset token issued")
+            return plaintext_token
+        except PyMongoError as e:
+            logger.error(f"[DB ERROR] failed to store reset token: {e}")
+            raise RuntimeError("server error: unable to prepare password reset")
+
+    @classmethod
+    def reset_password_with_token(cls, token: str, new_password: str):
+        cls.validate_password(new_password)
+        hashed=cls._hash_token(token)
+        now=datetime.now(timezone.utc)
+        try:
+            reset_doc=password_resets_collection.find_one({"hashed_token": hashed})
+        except PyMongoError as e:
+            logger.error(f"[DB ERROR] failed to lookup reset token: {e}")
+            raise RuntimeError("server error")
+        if not reset_doc:
+            raise ValueError("invalid or expired reset token")
+        if reset_doc.get("used"):
+            raise ValueError("reset token already used")
+        expires_at=reset_doc.get("expires_at")
+        if expires_at and expires_at.tzinfo is None:
+            expires_at=expires_at.replace(tzinfo=timezone.utc)
+        if not expires_at or expires_at<now:
+            raise ValueError("reset token expired")
+        try:
+            user_id=reset_doc.get("user_id")
+            if not user_id:
+                raise RuntimeError("password reset record malformed")
+            new_hash=cls.hash_password(new_password)
+            result=users_collection.update_one(
+                {"_id": user_id},
+                {"$set": {"password_hash": new_hash, "updated_at": now}}
+            )
+            if result.matched_count==0:
+                raise RuntimeError("user not found")
+            password_resets_collection.update_one(
+                {"_id": reset_doc["_id"]},
+                {"$set": {"used": True, "used_at": now}}
+            )
+            logger.info(f"[RESET PASSWORD] password updated for user {user_id}")
+            return True
+        except PyMongoError as e:
+            logger.error(f"[DB ERROR] failed to reset password: {e}")
+            raise RuntimeError("server error: unable to reset password")
 
 
 class TokenManager:
