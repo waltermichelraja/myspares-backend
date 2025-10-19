@@ -88,6 +88,50 @@ def login(request):
 
 
 @api_view(["POST"])
+def forgot_password_send(request):
+    phone=request.data.get("phone_number")
+    if not phone:
+        return Response({"error": "phone_number is required"}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        Auth.initiate_password_reset(phone)
+        return Response({"message": "If an account with that number exists, an OTP was sent."})
+    except RuntimeError as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["POST"])
+def forgot_password_verify(request):
+    phone=request.data.get("phone_number")
+    otp=request.data.get("otp")
+    if not phone or not otp:
+        return Response({"error": "phone_number and otp are required"}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        reset_token=Auth.verify_password_reset_otp(phone, otp)
+        return Response({"reset_token": reset_token})
+    except ValueError as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    except RuntimeError as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(["POST"])
+def forgot_password_reset(request):
+    token=request.data.get("reset_token")
+    new_password=request.data.get("new_password")
+    if not token or not new_password:
+        return Response({"error": "reset_token and new_password are required"}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        Auth.reset_password_with_token(token, new_password)
+        return Response({"message": "Password has been reset successfully"})
+    except ValueError as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    except RuntimeError as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(["POST"])
 def refresh(request):
     refresh_token=request.COOKIES.get("refresh_token")
     if not refresh_token:
