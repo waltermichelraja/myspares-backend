@@ -9,6 +9,10 @@ blacklisted_tokens_collection=settings.MONGO_DB["blacklisted_tokens"]
 
 temporary_users_collection=settings.MONGO_DB["temporary_users"]
 
+password_resets_collection = settings.MONGO_DB["password_resets"]
+password_resets_collection.create_index("hashed_token", unique=True, sparse=True)
+password_resets_collection.create_index("expires_at", expireAfterSeconds=0)
+
 logger=logging.getLogger("authentication_events")
 logger.setLevel(logging.INFO)
 if not logger.handlers:
