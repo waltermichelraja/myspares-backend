@@ -11,6 +11,9 @@ a fully functional backend service for an e-commerce platform, providing secure 
 | send OTP   | `/api/auth/register/send-otp/`     | `POST` | `username`, `phone_number`, `password`      |
 | verify OTP | `/api/auth/register/verify-otp/`   | `POST` | `phone_number`, `otp`                       |
 | login      | `/api/auth/login/`                 | `POST` | `phone_number`, `password`                  |
+| forgot-password send OTP   | `/api/auth/forgot-password/send/`   | `POST` | `phone_number` |
+| forgot-password verify OTP | `/api/auth/forgot-password/verify/` | `POST` | `phone_number`, `otp` |
+| reset password  | `/api/auth/forgot-password/reset/`  | `POST` | `refresh_token`, `new_password` |
 | refresh    | `/api/auth/refresh/`               | `POST` | `none [COOKIE: {refresh_token}]`            |
 | logout     | `/api/auth/logout/`                | `POST` | `header: Authorization: Bearer <access_token>` `body: none [COOKIE: {refresh_token}]` |
 
