@@ -35,13 +35,8 @@ class Auth:
                 else "invalid characters"
             ))
         if not re.match(r"^\d{10,15}$", str(phone_number)):
-            raise ValueError("invalid phone number: must be 10–15 digits")
-
-        if not re.match(r"^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[\W_]).{4,16}$", str(password)):
-            raise ValueError("invalid password: " + (
-                "password too long/short" if not re.match(r"^.{4,16}$", str(password))
-                else "must include uppercase, lowercase, number, and special character"
-            ))
+            raise ValueError("invalid phone number: must be 10-15 digits")
+        Auth.validate_password(password)
 
     @staticmethod
     def hash_password(password):
