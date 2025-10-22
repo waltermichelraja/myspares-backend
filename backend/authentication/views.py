@@ -78,7 +78,7 @@ def login(request):
     user=Auth.from_dict(user_data)
     if not user.check_password(password):
         return Response({"error": "invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
-    tokens=TokenManager.generate_tokens(user)
+    tokens=TokenManager.generate_tokens(user, request=request)
     response=JsonResponse({
         "access": tokens["access"],
         "user": user.to_dict(include_password=False)

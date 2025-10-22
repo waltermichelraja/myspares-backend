@@ -282,11 +282,14 @@ class Auth:
 
 class TokenManager:
     @staticmethod
-    def generate_tokens(user: Auth):
+    def generate_tokens(user: Auth, request=None):
         refresh=RefreshToken()
         refresh["user_id"]=str(user.id)
         refresh["phone_number"]=user.phone_number
-
+        refresh["iss"] = "myspares-auth-service"
+        refresh["iat"] = int(datetime.now(timezone.utc).timestamp())
+        if request:
+            refresh["device_id"] = request.META.get("HTTP_USER_AGENT", "unknown")
         return {
             "refresh": str(refresh),
             "access": str(refresh.access_token),
