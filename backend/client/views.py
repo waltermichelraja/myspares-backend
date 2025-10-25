@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import Cart, Address
 from authentication.models import TokenManager
+from utility.exceptions import handle_exceptions
 
 
 def get_token_from_header(request):
@@ -25,6 +26,7 @@ def require_auth(request, user_id):
         return Response({"error": str(e)}, status=status.HTTP_401_UNAUTHORIZED)
 
 
+@handle_exceptions
 @api_view(["GET"])
 @authentication_classes([])
 @permission_classes([AllowAny])
@@ -35,7 +37,7 @@ def list_cart(request, user_id):
     cart=Cart.get_cart(user_id)
     return Response({"cart": cart.to_dict()}, status=status.HTTP_200_OK)
 
-
+@handle_exceptions
 @api_view(["POST"])
 @authentication_classes([])
 @permission_classes([AllowAny])
@@ -44,13 +46,10 @@ def add_to_cart(request, user_id, product_id):
     if isinstance(auth, Response):
         return auth
     quantity=int(request.data.get("quantity", 1))
-    try:
-        cart=Cart.add_item(str(user_id), str(product_id), quantity)
-        return Response({"cart": cart.to_dict()}, status=status.HTTP_200_OK)
-    except ValueError as e:
-        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    cart=Cart.add_item(str(user_id), str(product_id), quantity)
+    return Response({"cart": cart.to_dict()}, status=status.HTTP_200_OK)
 
-
+@handle_exceptions
 @api_view(["DELETE"])
 @authentication_classes([])
 @permission_classes([AllowAny])
@@ -58,13 +57,11 @@ def remove_from_cart(request, user_id, product_id):
     auth=require_auth(request, user_id)
     if isinstance(auth, Response):
         return auth
-    try:
-        cart=Cart.remove_item(str(user_id), str(product_id))
-        return Response({"cart": cart.to_dict()}, status=status.HTTP_200_OK)
-    except ValueError as e:
-        return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+    cart=Cart.remove_item(str(user_id), str(product_id))
+    return Response({"cart": cart.to_dict()}, status=status.HTTP_200_OK)
 
 
+@handle_exceptions
 @api_view(["GET"])
 @authentication_classes([])
 @permission_classes([AllowAny])
@@ -72,13 +69,10 @@ def get_address(request, user_id):
     auth=require_auth(request, user_id)
     if isinstance(auth, Response):
         return auth
-    try:
-        address=Address.address_fetch(user_id)
-        return Response({"address": address.to_dict()}, status=status.HTTP_200_OK)
-    except ValueError as e:
-        return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+    address=Address.address_fetch(user_id)
+    return Response({"address": address.to_dict()}, status=status.HTTP_200_OK)
 
-
+@handle_exceptions
 @api_view(["PUT"])
 @authentication_classes([])
 @permission_classes([AllowAny])
@@ -86,8 +80,5 @@ def update_address(request, user_id):
     auth=require_auth(request, user_id)
     if isinstance(auth, Response):
         return auth
-    try:
-        address=Address.address_update(user_id, **request.data)
-        return Response({"address": address.to_dict()}, status=status.HTTP_200_OK)
-    except ValueError as e:
-        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    address=Address.address_update(user_id, **request.data)
+    return Response({"address": address.to_dict()}, status=status.HTTP_200_OK)
