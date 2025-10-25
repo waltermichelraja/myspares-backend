@@ -7,8 +7,8 @@ from .apps import AuthenticationConfig
 from utility.exceptions import handle_exceptions
 
 
-@api_view(["POST"])
 @handle_exceptions
+@api_view(["POST"])
 def register(request):
     data=request.data
     for field in ["username", "phone_number", "password"]:
@@ -18,8 +18,8 @@ def register(request):
     return Response({"message": "user registered successfully", "user": user.to_dict()}, status=status.HTTP_201_CREATED)
 
 
-@api_view(["POST"])
 @handle_exceptions
+@api_view(["POST"])
 def send_otp_view(request):
     data=request.data
     for field in ["username", "phone_number", "password"]:
@@ -30,8 +30,8 @@ def send_otp_view(request):
     return Response({"message": "OTP sent successfully"})
 
 
-@api_view(["POST"])
 @handle_exceptions
+@api_view(["POST"])
 def verify_otp_view(request):
     data=request.data
     phone_number=data.get("phone_number")
@@ -46,8 +46,8 @@ def verify_otp_view(request):
         }, status=status.HTTP_201_CREATED)
 
 
-@api_view(["POST"])
 @handle_exceptions
+@api_view(["POST"])
 def login(request):
     data=request.data
     phone_number=data.get("phone_number")
@@ -71,8 +71,8 @@ def login(request):
     return response
 
 
-@api_view(["POST"])
 @handle_exceptions
+@api_view(["POST"])
 def forgot_password_send(request):
     phone=request.data.get("phone_number")
     if not phone:
@@ -81,8 +81,8 @@ def forgot_password_send(request):
     return Response({"message": "if an account with the number exists, an OTP was sent."})
 
 
-@api_view(["POST"])
 @handle_exceptions
+@api_view(["POST"])
 def forgot_password_verify(request):
     phone=request.data.get("phone_number")
     otp=request.data.get("otp")
@@ -92,8 +92,8 @@ def forgot_password_verify(request):
     return Response({"reset_token": reset_token})
 
 
-@api_view(["POST"])
 @handle_exceptions
+@api_view(["POST"])
 def forgot_password_reset(request):
     token=request.data.get("reset_token")
     new_password=request.data.get("new_password")
@@ -103,8 +103,8 @@ def forgot_password_reset(request):
     return Response({"message": "password has been reset successfully"})
 
 
-@api_view(["POST"])
 @handle_exceptions
+@api_view(["POST"])
 def refresh(request):
     refresh_token=request.COOKIES.get("refresh_token")
     if not refresh_token:
@@ -117,8 +117,8 @@ def refresh(request):
     return response
 
 
-@api_view(["POST"])
 @handle_exceptions
+@api_view(["POST"])
 def logout(request):
     refresh_token=request.COOKIES.get("refresh_token")
     access_header=request.headers.get("Authorization", "")
