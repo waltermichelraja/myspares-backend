@@ -741,3 +741,15 @@ class Product:
                 {"$set": {"subtotal": new_subtotal, "updated_at": now}}
             )
         return cls.from_dict(updated_doc)
+
+
+class Admin:
+    @classmethod
+    def fetch_audits(cls):
+        try:
+            logs=list(audits_collection.find().sort("timestamp", -1))
+            for log in logs:
+                log["_id"]=str(log["_id"])
+            return {"count": len(logs), "logs": logs}
+        except PyMongoError as e:
+            raise RuntimeError(f"database error fetching audits: {e}")
