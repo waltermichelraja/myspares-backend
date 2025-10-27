@@ -4,6 +4,7 @@ from .views import (
     insert_model, delete_model, update_model,
     insert_category, delete_category, update_category,
     insert_product, delete_product, update_product,
+    list_audits
 )
 
 urlpatterns=[
@@ -25,4 +26,6 @@ urlpatterns=[
           delete_product, name="delete_product"),
      path("brands/<str:brand_code>/models/<str:model_code>/categories/<str:category_code>/products/update/<str:product_code>/",
           update_product, name="update_product"),
+
+     path("audits/", list_audits, name="list_audits"),
 ]

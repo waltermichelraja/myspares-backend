@@ -1,7 +1,7 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Brand, Model, Category, Product
+from .models import Brand, Model, Category, Product, Admin
 from utility.exceptions import handle_exceptions
 
 
@@ -140,3 +140,10 @@ def update_product(request, brand_code, model_code, category_code, product_code)
         "message": "product updated successfully",
         "product": updated_product.to_dict()
     }, status=status.HTTP_200_OK)
+
+
+@handle_exceptions
+@api_view(["GET"])
+def list_audits(request):
+    logs=Admin.fetch_audits()
+    return Response({"audits": logs}, status=status.HTTP_200_OK)
