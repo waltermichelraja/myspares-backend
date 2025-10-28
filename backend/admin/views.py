@@ -5,8 +5,8 @@ from .models import Brand, Model, Category, Product, Admin
 from utility.exceptions import handle_exceptions
 
 
-@handle_exceptions
 @api_view(["POST"])
+@handle_exceptions
 def insert_brand(request):
     data=request.data
     for field in ["brand_name", "brand_code", "image_url"]:
@@ -18,14 +18,14 @@ def insert_brand(request):
         "brand": brand.to_dict()
     }, status=status.HTTP_201_CREATED)
 
-@handle_exceptions
 @api_view(["DELETE"])
+@handle_exceptions
 def delete_brand(request, brand_code):
     Brand.brand_delete(brand_code)
     return Response({"message": "brand deleted successfully"}, status=status.HTTP_200_OK)
 
-@handle_exceptions
 @api_view(["PUT"])
+@handle_exceptions
 def update_brand(request, brand_code):
     updates=request.data
     if not updates:
@@ -37,8 +37,8 @@ def update_brand(request, brand_code):
     }, status=status.HTTP_200_OK)
 
 
-@handle_exceptions
 @api_view(["POST"])
+@handle_exceptions
 def insert_model(request, brand_code):
     data=request.data
     for field in ["model_name", "model_code", "image_url"]:
@@ -50,14 +50,14 @@ def insert_model(request, brand_code):
         "model": model.to_dict()
     }, status=status.HTTP_201_CREATED)
 
-@handle_exceptions
 @api_view(["DELETE"])
+@handle_exceptions
 def delete_model(request, brand_code, model_code):
     Model.model_delete(brand_code, model_code)
     return Response({"message": "model deleted successfully"}, status=status.HTTP_200_OK)
 
-@handle_exceptions
 @api_view(["PUT"])
+@handle_exceptions
 def update_model(request, brand_code, model_code):
     updates=request.data
     if not updates:
@@ -69,8 +69,8 @@ def update_model(request, brand_code, model_code):
     }, status=status.HTTP_200_OK)
 
 
-@handle_exceptions
 @api_view(["POST"])
+@handle_exceptions
 def insert_category(request, brand_code, model_code):
     data=request.data
     for field in ["category_name", "category_code", "image_url"]:
@@ -85,14 +85,14 @@ def insert_category(request, brand_code, model_code):
         "category": category.to_dict()
     }, status=status.HTTP_201_CREATED)
 
-@handle_exceptions
 @api_view(["DELETE"])
+@handle_exceptions
 def delete_category(request, brand_code, model_code, category_code):
     Category.category_delete(brand_code, model_code, category_code)
     return Response({"message": "category deleted successfully"}, status=status.HTTP_200_OK)
 
-@handle_exceptions
 @api_view(["PUT"])
+@handle_exceptions
 def update_category(request, brand_code, model_code, category_code):
     updates=request.data
     if not updates:
@@ -104,8 +104,8 @@ def update_category(request, brand_code, model_code, category_code):
     }, status=status.HTTP_200_OK)
 
 
-@handle_exceptions
 @api_view(["POST"])
+@handle_exceptions
 def insert_product(request, brand_code, model_code, category_code):
     data=request.data
     for field in ["product_name", "product_code", "description", "price", "stock", "image_url"]:
@@ -121,14 +121,14 @@ def insert_product(request, brand_code, model_code, category_code):
         "product": product.to_dict()
     }, status=status.HTTP_201_CREATED)
 
-@handle_exceptions
 @api_view(["DELETE"])
+@handle_exceptions
 def delete_product(request, brand_code, model_code, category_code, product_code):
     Product.product_delete(brand_code, model_code, category_code, product_code)
     return Response({"message": "product deleted successfully"}, status=status.HTTP_200_OK)
 
-@handle_exceptions
 @api_view(["PUT"])
+@handle_exceptions
 def update_product(request, brand_code, model_code, category_code, product_code):
     updates=request.data
     if not updates:
@@ -142,8 +142,20 @@ def update_product(request, brand_code, model_code, category_code, product_code)
     }, status=status.HTTP_200_OK)
 
 
-@handle_exceptions
 @api_view(["GET"])
+@handle_exceptions
 def list_audits(request):
-    logs=Admin.fetch_audits()
-    return Response({"audits": logs}, status=status.HTTP_200_OK)
+    logs=Admin.audits_list()
+    return Response(logs, status=status.HTTP_200_OK)
+
+@api_view(["GET"])
+@handle_exceptions
+def search_audits(request):
+    query=request.query_params.get("q", "").strip()
+    if not query:
+        return Response(
+            {"error": "missing required query parameter: q"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    logs=Admin.audit_search(query)
+    return Response(logs, status=status.HTTP_200_OK)

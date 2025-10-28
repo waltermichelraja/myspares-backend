@@ -4,7 +4,7 @@ from .views import (
     insert_model, delete_model, update_model,
     insert_category, delete_category, update_category,
     insert_product, delete_product, update_product,
-    list_audits
+    list_audits, search_audits
 )
 
 urlpatterns=[
@@ -28,4 +28,5 @@ urlpatterns=[
           update_product, name="update_product"),
 
      path("audits/", list_audits, name="list_audits"),
+     path("audits/search/", search_audits, name="search_audits"),
 ]
