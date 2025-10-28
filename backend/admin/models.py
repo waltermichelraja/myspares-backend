@@ -745,7 +745,7 @@ class Product:
 
 class Admin:
     @classmethod
-    def fetch_audits(cls):
+    def audits_list(cls):
         try:
             logs=list(audits_collection.find().sort("timestamp", -1))
             for log in logs:
@@ -753,3 +753,26 @@ class Admin:
             return {"count": len(logs), "logs": logs}
         except PyMongoError as e:
             raise RuntimeError(f"database error fetching audits: {e}")
+
+    @classmethod
+    def audit_search(cls, query: str):
+        try:
+            if not query:
+                raise ValueError("query is required")
+            regex={"$regex": query, "$options": "i"}
+            docs=list(
+                audits_collection.find({
+                    "$or": [
+                        {"collection": regex},
+                        {"operation": regex},
+                        {"document_key._id": regex},
+                        {"full_document": regex},
+                        {"update_description.updatedFields": regex},
+                    ]
+                }).sort("timestamp", -1)
+            )
+            for doc in docs:
+                doc["_id"]=str(doc["_id"])
+            return {"count": len(docs), "logs": docs}
+        except PyMongoError as e:
+            raise RuntimeError(f"database error searching audits: {e}")
