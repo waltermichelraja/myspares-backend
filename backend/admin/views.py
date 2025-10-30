@@ -151,11 +151,13 @@ def list_audits(request):
 @api_view(["GET"])
 @handle_exceptions
 def search_audits(request):
-    query=request.query_params.get("q", "").strip()
+    query=request.query_params.get("q", "").strip("/")
+    sort_field=request.query_params.get("sort", "-timestamp")
+    limit=int(request.query_params.get("limit", 100))
     if not query:
         return Response(
             {"error": "missing required query parameter: q"},
             status=status.HTTP_400_BAD_REQUEST,
         )
-    logs=Admin.audit_search(query)
+    logs=Admin.audit_search(query, sort_field=sort_field, limit=limit)
     return Response(logs, status=status.HTTP_200_OK)

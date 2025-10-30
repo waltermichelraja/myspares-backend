@@ -755,22 +755,23 @@ class Admin:
             raise RuntimeError(f"database error fetching audits: {e}")
 
     @classmethod
-    def audit_search(cls, query: str):
+    def audit_search(cls, query: str, sort_field: str = "-timestamp", limit: int = 50):
         try:
             if not query:
                 raise ValueError("query is required")
             regex={"$regex": query, "$options": "i"}
-            docs=list(
-                audits_collection.find({
-                    "$or": [
-                        {"collection": regex},
-                        {"operation": regex},
-                        {"document_key._id": regex},
-                        {"full_document": regex},
-                        {"update_description.updatedFields": regex},
-                    ]
-                }).sort("timestamp", -1)
-            )
+            search_filter={
+                "$or": [
+                    {"collection": regex},
+                    {"operation": regex},
+                    {"document_key._id": regex},
+                    {"full_document": regex},
+                    {"update_description.updatedFields": regex},
+                ]
+            }
+            direction=-1 if sort_field.startswith("-") else 1
+            field=sort_field.lstrip("-")
+            docs=list(audits_collection.find(search_filter).sort(field, direction).limit(limit))
             for doc in docs:
                 doc["_id"]=str(doc["_id"])
             return {"count": len(docs), "logs": docs}
