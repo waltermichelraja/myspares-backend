@@ -145,7 +145,11 @@ def update_product(request, brand_code, model_code, category_code, product_code)
 @api_view(["GET"])
 @handle_exceptions
 def list_audits(request):
-    logs=Admin.audits_list()
+    try:
+        limit=int(request.query_params.get("limit", 50))
+    except ValueError:
+        return Response({"error": "limit must be an integer"}, status=status.HTTP_400_BAD_REQUEST)
+    logs=Admin.audits_list(limit=limit)
     return Response(logs, status=status.HTTP_200_OK)
 
 @api_view(["GET"])
@@ -153,7 +157,7 @@ def list_audits(request):
 def search_audits(request):
     query=request.query_params.get("q", "").strip("/")
     sort_field=request.query_params.get("sort", "-timestamp")
-    limit=int(request.query_params.get("limit", 100))
+    limit=int(request.query_params.get("limit", 50))
     if not query:
         return Response(
             {"error": "missing required query parameter: q"},
