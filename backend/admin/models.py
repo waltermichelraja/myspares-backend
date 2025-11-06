@@ -53,9 +53,9 @@ class Brand:
         )
 
     @classmethod
-    def brands_list(cls):
+    def brands_list(cls, limit=20):
         try:
-            docs=list(brands_collection.find())
+            docs=list(brands_collection.find().limit(limit))
             return [cls.from_dict(doc).to_dict() for doc in docs]
         except PyMongoError as e:
             raise RuntimeError(f"database error: {e}")
@@ -209,11 +209,11 @@ class Model:
         )
 
     @classmethod
-    def models_list(cls, brand_code):
+    def models_list(cls, brand_code, limit=20):
         brand_doc=brands_collection.find_one({"brand_code": brand_code})
         if not brand_doc:
             raise ValueError("brand not found")
-        docs=list(models_collection.find({"brand_id": brand_doc["_id"]}))
+        docs=list(models_collection.find({"brand_id":brand_doc["_id"]}).limit(limit))
         return [cls.from_dict(doc).to_dict() for doc in docs]
 
     @classmethod
@@ -370,14 +370,14 @@ class Category:
         )
 
     @classmethod
-    def categories_list(cls, brand_code, model_code):
+    def categories_list(cls, brand_code, model_code, limit=20):
         brand_doc=brands_collection.find_one({"brand_code": brand_code})
         if not brand_doc:
             raise ValueError("brand not found")
         model_doc=models_collection.find_one({"brand_id": brand_doc["_id"], "model_code": model_code})
         if not model_doc:
             raise ValueError("model not found")
-        docs=list(categories_collection.find({"model_id": model_doc["_id"]}))
+        docs=list(categories_collection.find({"model_id": model_doc["_id"]}).limit(limit))
         return [cls.from_dict(doc).to_dict() for doc in docs]
 
     @classmethod
@@ -557,7 +557,7 @@ class Product:
         )
 
     @classmethod
-    def products_list(cls, brand_code, model_code, category_code):
+    def products_list(cls, brand_code, model_code, category_code, limit=20):
         brand_doc=brands_collection.find_one({"brand_code": brand_code})
         if not brand_doc:
             raise ValueError("brand not found")
@@ -567,30 +567,24 @@ class Product:
         category_doc=categories_collection.find_one({"model_id": model_doc["_id"], "category_code": category_code})
         if not category_doc:
             raise ValueError("category not found")
-        docs=list(products_collection.find({"category_id": category_doc["_id"]}))
+        docs=list(products_collection.find({"category_id": category_doc["_id"]}).limit(limit))
         return [cls.from_dict(doc).to_dict() for doc in docs]
 
     @classmethod
     def product_insert(cls, brand_code, model_code, category_code, product_name, product_code, description, price, stock, image_url):
         cls.validate_fields(product_name, product_code, description, price, stock, image_url)
-
         brand_doc=brands_collection.find_one({"brand_code": brand_code})
         if not brand_doc:
             raise ValueError("brand not found")
-
         model_doc=models_collection.find_one({"brand_id": brand_doc["_id"], "model_code": model_code})
         if not model_doc:
             raise ValueError("model not found")
-
         category_doc=categories_collection.find_one({"model_id": model_doc["_id"], "category_code": category_code})
         if not category_doc:
             raise ValueError("category not found")
-
         if products_collection.find_one({"category_id": category_doc["_id"], "product_code": product_code}):
             raise ValueError("product_code already exists for this category")
-
         code=f"{brand_doc['brand_code']}-{model_doc['model_code']}-{category_doc['category_code']}-{product_code}"
-
         product_doc={
             "category_id": category_doc["_id"],
             "product_name": product_name,
@@ -673,7 +667,6 @@ class Product:
         category_doc=categories_collection.find_one({"model_id": model_doc["_id"], "category_code": category_code})
         if not category_doc:
             raise ValueError("category not found")
-
         product_doc=products_collection.find_one({
             "category_id": category_doc["_id"],
             "product_code": product_code
@@ -718,7 +711,6 @@ class Product:
                         }
                     except (ValueError, TypeError):
                         raise ValueError("'from' and 'to' inside validity must be integers (timestamps)")
-
                     structured_offer["description"]=str(offers["description"]).strip()
                     update_data["offers"]=structured_offer
                 else:
@@ -745,9 +737,10 @@ class Product:
 
 class Admin:
     @classmethod
-    def audits_list(cls):
+    def audits_list(cls, limit: int=50):
         try:
-            logs=list(audits_collection.find().sort("timestamp", -1))
+            cursor=audits_collection.find().limit(limit)
+            logs=list(cursor)
             for log in logs:
                 log["_id"]=str(log["_id"])
             return {"count": len(logs), "logs": logs}
@@ -755,7 +748,7 @@ class Admin:
             raise RuntimeError(f"database error fetching audits: {e}")
 
     @classmethod
-    def audit_search(cls, query: str, sort_field: str = "-timestamp", limit: int = 50):
+    def audit_search(cls, query: str, sort_field: str="-timestamp", limit: int=50):
         try:
             if not query:
                 raise ValueError("query is required")
