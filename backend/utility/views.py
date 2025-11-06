@@ -6,7 +6,8 @@ from .exceptions import handle_exceptions
 @api_view(["GET"])
 @handle_exceptions
 def list_brands(request):
-    brands=Brand.brands_list()
+    limit=int(request.GET.get("limit", 20))
+    brands=Brand.brands_list(limit=limit)
     return Response({"brands": brands}, status=status.HTTP_200_OK)
 
 @api_view(["GET"])
@@ -31,7 +32,8 @@ def search_brand(request):
 @api_view(["GET"])
 @handle_exceptions
 def list_models(request, brand_code):
-    models=Model.models_list(brand_code)
+    limit=int(request.GET.get("limit", 20))
+    models=Model.models_list(brand_code, limit=limit)
     return Response({"models": models}, status=status.HTTP_200_OK)
 
 @api_view(["GET"])
@@ -56,7 +58,8 @@ def search_model(request, brand_code):
 @api_view(["GET"])
 @handle_exceptions
 def list_categories(request, brand_code, model_code):
-    categories=Category.categories_list(brand_code, model_code)
+    limit=int(request.GET.get("limit", 20))
+    categories=Category.categories_list(brand_code, model_code, limit=limit)
     return Response({"categories": categories}, status=status.HTTP_200_OK)
 
 @api_view(["GET"])
@@ -81,7 +84,8 @@ def search_category(request, brand_code, model_code):
 @api_view(["GET"])
 @handle_exceptions
 def list_products(request, brand_code, model_code, category_code):
-    products=Product.products_list(brand_code, model_code, category_code)
+    limit=int(request.GET.get("limit", 20))
+    products=Product.products_list(brand_code, model_code, category_code, limit=limit)
     return Response({"products": products}, status=status.HTTP_200_OK)
 
 @api_view(["GET"])
