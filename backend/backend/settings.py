@@ -11,7 +11,7 @@ BASE_DIR=Path(__file__).resolve().parent.parent
 
 SECRET_KEY=os.getenv("DJANGO_KEY")
 DEBUG=True
-ALLOWED_HOSTS=["myspares-backend.onrender.com"]
+ALLOWED_HOSTS=["127.0.0.1", "localhost", "myspares-backend.onrender.com"]
 MONGO_URI=os.getenv("MONGO_URI")
 MONGO_DB_NAME="MySpares_db"
 client=MongoClient(MONGO_URI)
