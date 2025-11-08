@@ -12,6 +12,12 @@ BASE_DIR=Path(__file__).resolve().parent.parent
 SECRET_KEY=os.getenv("DJANGO_KEY")
 DEBUG=True
 ALLOWED_HOSTS=["127.0.0.1", "localhost", "myspares-backend.onrender.com"]
+
+CORS_ALLOW_ALL_ORIGINS=False
+CORS_ALLOWED_ORIGINS=["http://localhost:3000", "http://127.0.0.1:3000"]
+CORS_ALLOW_CREDENTIALS=True
+CORS_ALLOW_HEADERS=["content-type","authorization"]
+
 MONGO_URI=os.getenv("MONGO_URI")
 MONGO_DB_NAME="MySpares_db"
 client=MongoClient(MONGO_URI)
@@ -21,8 +27,7 @@ TWILIO_ACCOUNT_SID=os.getenv("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN=os.getenv("TWILIO_AUTH_TOKEN")
 TWILIO_VERIFY_SID=os.getenv("TWILIO_VERIFY_SID")
 
-INSTALLED_APPS = [
-#    'django.contrib.admin',
+INSTALLED_APPS=[
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -30,13 +35,15 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'rest_framework',
+    'corsheaders',
     'authentication',
     'admin',
     'client',
     'utility',
 ]
 
-MIDDLEWARE = [
+MIDDLEWARE=[
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -46,9 +53,9 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'backend.urls'
+ROOT_URLCONF='backend.urls'
 
-TEMPLATES = [
+TEMPLATES=[
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [],
@@ -63,32 +70,26 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'backend.wsgi.application'
+WSGI_APPLICATION='backend.wsgi.application'
 
-REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": (
-        # "rest_framework_simplejwt.authentication.JWTAuthentication",
-    ),
-    'DEFAULT_RENDERER_CLASSES': [
-        'rest_framework.renderers.JSONRenderer',
-    ],
-    'DEFAULT_PARSER_CLASSES': [
-        'rest_framework.parsers.JSONParser',
-    ]
+REST_FRAMEWORK={
+    "DEFAULT_AUTHENTICATION_CLASSES": (),
+    'DEFAULT_RENDERER_CLASSES': ['rest_framework.renderers.JSONRenderer'],
+    'DEFAULT_PARSER_CLASSES': ['rest_framework.parsers.JSONParser'],
 }
 
-SIMPLE_JWT = {
+SIMPLE_JWT={
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
 }
 
-LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
-USE_I18N = True
-USE_TZ = True
+LANGUAGE_CODE='en-us'
+TIME_ZONE='UTC'
+USE_I18N=True
+USE_TZ=True
 
-STATIC_URL = 'static/'
+STATIC_URL='static/'
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD='django.db.models.BigAutoField'
