@@ -1,6 +1,7 @@
 from pymongo.errors import PyMongoError
 from datetime import datetime, timezone
 from client.models import Cart
+from utility.cloudinary import upload_image
 from .admin import *
 import re
 
@@ -61,10 +62,11 @@ class Brand:
             raise RuntimeError(f"database error: {e}")
 
     @classmethod
-    def brand_insert(cls, brand_name, brand_code, image_url):
-        cls.validate_fields(brand_name, brand_code, image_url)
+    def brand_insert(cls, brand_name, brand_code, image_file_path):
+        cls.validate_fields(brand_name, brand_code, "placeholder")
         if brands_collection.find_one({"brand_code": brand_code}):
             raise ValueError("brand_code already exists")
+        image_url=upload_image(image_file_path)
         brand_doc={
             "brand_name": brand_name,
             "brand_code": brand_code,
@@ -133,22 +135,23 @@ class Brand:
             raise RuntimeError(f"database error during search: {e}")
     
     @classmethod
-    def brand_update(cls, brand_code, updates: dict):
+    def brand_update(cls, brand_code, updates: dict, image_file_path=None):
         brand_doc=brands_collection.find_one({"brand_code": brand_code})
         if not brand_doc:
             raise ValueError("brand not found")
         allowed_fields=["brand_name", "image_url"]
         update_data={}
         for field in allowed_fields:
-            if field in updates:
-                if field=="brand_name":
-                    if not isinstance(updates["brand_name"], str) or not (2 <= len(updates["brand_name"].strip()) <= 50):
-                        raise ValueError("invalid brand_name")
-                    update_data["brand_name"]=updates["brand_name"].strip()
-                elif field=="image_url":
-                    if not isinstance(updates["image_url"], str) or not updates["image_url"].strip():
-                        raise ValueError("invalid image_url")
-                    update_data["image_url"]=updates["image_url"].strip()
+            if field in updates and field=="brand_name":
+                if not isinstance(updates["brand_name"], str) or not (2 <= len(updates["brand_name"].strip()) <= 50):
+                    raise ValueError("invalid brand_name")
+                update_data["brand_name"]=updates["brand_name"].strip()
+        if image_file_path:
+            update_data["image_url"]=upload_image(image_file_path)
+        elif "image_url" in updates:
+            if not isinstance(updates["image_url"], str) or not updates["image_url"].strip():
+                raise ValueError("invalid image_url")
+            update_data["image_url"]=updates["image_url"].strip()
         if not update_data:
             raise ValueError("no valid fields to update")
         result=brands_collection.update_one({"_id": brand_doc["_id"]}, {"$set": update_data})
@@ -217,13 +220,14 @@ class Model:
         return [cls.from_dict(doc).to_dict() for doc in docs]
 
     @classmethod
-    def model_insert(cls, brand_code, model_name, model_code, image_url):
-        cls.validate_fields(model_name, model_code, image_url)
+    def model_insert(cls, brand_code, model_name, model_code, image_file_path):
+        cls.validate_fields(model_name, model_code, "placeholder")
         brand_doc=brands_collection.find_one({"brand_code": brand_code})
         if not brand_doc:
             raise ValueError("brand not found")
         if models_collection.find_one({"brand_id": brand_doc["_id"], "model_code": model_code}):
             raise ValueError("model_code already exists for this brand")
+        image_url=upload_image(image_file_path)
         model_doc={
             "brand_id": brand_doc["_id"],
             "model_name": model_name,
@@ -291,7 +295,7 @@ class Model:
         return [cls.from_dict(doc).to_dict() for doc in docs]
 
     @classmethod
-    def model_update(cls, brand_code, model_code, updates: dict):
+    def model_update(cls, brand_code, model_code, updates: dict, image_file_path=None):
         brand_doc=brands_collection.find_one({"brand_code": brand_code})
         if not brand_doc:
             raise ValueError("brand not found")
@@ -301,15 +305,12 @@ class Model:
         allowed_fields=["model_name", "image_url"]
         update_data={}
         for field in allowed_fields:
-            if field in updates:
-                if field=="model_name":
-                    if not isinstance(updates["model_name"], str) or not (2 <= len(updates["model_name"].strip()) <= 50):
-                        raise ValueError("invalid model_name")
-                    update_data["model_name"]=updates["model_name"].strip()
-                elif field=="image_url":
-                    if not isinstance(updates["image_url"], str) or not updates["image_url"].strip():
-                        raise ValueError("invalid image_url")
-                    update_data["image_url"]=updates["image_url"].strip()
+            if field in updates and field=="model_name":
+                if not isinstance(updates["model_name"], str) or not (2 <= len(updates["model_name"].strip()) <= 50):
+                    raise ValueError("invalid model_name")
+                update_data["model_name"]=updates["model_name"].strip()
+        if image_file_path:
+            update_data["image_url"]=upload_image(image_file_path)
         if not update_data:
             raise ValueError("no valid fields to update")
         result=models_collection.update_one({"_id": model_doc["_id"]}, {"$set": update_data})
@@ -381,8 +382,8 @@ class Category:
         return [cls.from_dict(doc).to_dict() for doc in docs]
 
     @classmethod
-    def category_insert(cls, brand_code, model_code, category_name, category_code, image_url):
-        cls.validate_fields(category_name, category_code, image_url)
+    def category_insert(cls, brand_code, model_code, category_name, category_code, image_file_path):
+        cls.validate_fields(category_name, category_code, "placeholder")
         brand_doc=brands_collection.find_one({"brand_code": brand_code})
         if not brand_doc:
             raise ValueError("brand not found")
@@ -391,6 +392,7 @@ class Category:
             raise ValueError("model not found")
         if categories_collection.find_one({"model_id": model_doc["_id"], "category_code": category_code}):
             raise ValueError("category_code already exists for this model")
+        image_url=upload_image(image_file_path)
         category_doc={
             "model_id": model_doc["_id"],
             "category_name": category_name,
@@ -460,7 +462,7 @@ class Category:
         return [cls.from_dict(doc).to_dict() for doc in docs]
 
     @classmethod
-    def category_update(cls, brand_code, model_code, category_code, updates: dict):
+    def category_update(cls, brand_code, model_code, category_code, updates:dict, image_file_path=None):
         brand_doc=brands_collection.find_one({"brand_code": brand_code})
         if not brand_doc:
             raise ValueError("brand not found")
@@ -478,10 +480,8 @@ class Category:
                     if not isinstance(updates["category_name"], str) or not (2 <= len(updates["category_name"].strip()) <= 50):
                         raise ValueError("invalid category_name")
                     update_data["category_name"]=updates["category_name"].strip()
-                elif field=="image_url":
-                    if not isinstance(updates["image_url"], str) or not updates["image_url"].strip():
-                        raise ValueError("invalid image_url")
-                    update_data["image_url"]=updates["image_url"].strip()
+        if image_file_path:
+            update_data["image_url"]=upload_image(image_file_path)
         if not update_data:
             raise ValueError("no valid fields to update")
         result=categories_collection.update_one({"_id": category_doc["_id"]}, {"$set": update_data})
@@ -571,7 +571,11 @@ class Product:
         return [cls.from_dict(doc).to_dict() for doc in docs]
 
     @classmethod
-    def product_insert(cls, brand_code, model_code, category_code, product_name, product_code, description, price, stock, image_url):
+    def product_insert(cls,brand_code, model_code, category_code, product_name, product_code, description, price, stock, image_file):
+        uploaded_url=upload_image(image_file)
+        if uploaded_url is None:
+            raise ValueError("image upload failed")
+        image_url=uploaded_url
         cls.validate_fields(product_name, product_code, description, price, stock, image_url)
         brand_doc=brands_collection.find_one({"brand_code": brand_code})
         if not brand_doc:
@@ -657,7 +661,7 @@ class Product:
 
 
     @classmethod
-    def product_update(cls, brand_code, model_code, category_code, product_code, updates: dict):
+    def product_update(cls, brand_code, model_code, category_code, product_code, updates:dict, image_file_path=None):
         brand_doc=brands_collection.find_one({"brand_code": brand_code})
         if not brand_doc:
             raise ValueError("brand not found")
@@ -675,9 +679,18 @@ class Product:
             raise ValueError("product not found")
         allowed_fields=["product_name", "description", "price", "stock", "image_url", "offers"]
         update_data={}
+        if image_file_path:
+            uploaded_url=upload_image(image_file_path)
+            if not uploaded_url:
+                raise ValueError("image upload failed")
+            update_data["image_url"]=uploaded_url
         for field in allowed_fields:
             if field in updates:
-                if field=="price":
+                if field=="image_url" and not image_file_path:
+                    if not isinstance(updates["image_url"],str) or not updates["image_url"].strip():
+                        raise ValueError("invalid image_url")
+                    update_data["image_url"]=updates["image_url"].strip()
+                elif field=="price":
                     try:
                         update_data["price"]=int(updates["price"])
                     except (ValueError, TypeError):
@@ -685,7 +698,7 @@ class Product:
                 elif field=="stock":
                     try:
                         update_data["stock"]=int(updates["stock"])
-                    except (ValueError, TypeError):
+                    except(ValueError, TypeError):
                         raise ValueError("stock must be an integer")
                 elif field=="offers":
                     offers=updates["offers"]
@@ -698,9 +711,8 @@ class Product:
                     structured_offer={}
                     try:
                         structured_offer["discount"]=float(offers["discount"])
-                    except (ValueError, TypeError):
+                    except(ValueError, TypeError):
                         raise ValueError("discount must be a number")
-
                     validity=offers.get("validity")
                     if not isinstance(validity, dict) or "from" not in validity or "to" not in validity:
                         raise ValueError("validity must be an object with 'from' and 'to' fields (timestamps)")
@@ -709,7 +721,7 @@ class Product:
                             "from": int(validity["from"]),
                             "to": int(validity["to"])
                         }
-                    except (ValueError, TypeError):
+                    except(ValueError, TypeError):
                         raise ValueError("'from' and 'to' inside validity must be integers (timestamps)")
                     structured_offer["description"]=str(offers["description"]).strip()
                     update_data["offers"]=structured_offer
@@ -730,8 +742,7 @@ class Product:
             new_subtotal=Cart.calculate_subtotal(cart["items"])
             carts_collection.update_one(
                 {"_id": cart["_id"]},
-                {"$set": {"subtotal": new_subtotal, "updated_at": now}}
-            )
+                {"$set": {"subtotal": new_subtotal, "updated_at": now}})
         return cls.from_dict(updated_doc)
 
 
