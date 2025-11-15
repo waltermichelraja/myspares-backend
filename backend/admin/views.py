@@ -1,22 +1,39 @@
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, parser_classes
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 from rest_framework import status
 from .models import Brand, Model, Category, Product, Admin
 from utility.exceptions import handle_exceptions
+import tempfile
+
+
+def save_image(image_file):
+    if not image_file:
+        return None
+    tmp_path=tempfile.NamedTemporaryFile(delete=False,suffix=".jpg").name
+    with open(tmp_path,"wb") as f:
+        for chunk in image_file.chunks():
+            f.write(chunk)
+    return tmp_path
 
 
 @api_view(["POST"])
+@parser_classes([MultiPartParser,FormParser])
 @handle_exceptions
 def insert_brand(request):
     data=request.data
-    for field in ["brand_name", "brand_code", "image_url"]:
+    for field in ["brand_name", "brand_code"]:
         if field not in data:
             raise ValueError(f"{field} is required")
-    brand=Brand.brand_insert(data["brand_name"], data["brand_code"], data["image_url"])
+    image_file=request.FILES.get("image")
+    if not image_file:
+        raise ValueError("image is required")
+    tmp_path=save_image(image_file)
+    brand=Brand.brand_insert(data["brand_name"], data["brand_code"], tmp_path)
     return Response({
         "message": "brand inserted successfully",
         "brand": brand.to_dict()
-    }, status=status.HTTP_201_CREATED)
+    },status=status.HTTP_201_CREATED)
 
 @api_view(["DELETE"])
 @handle_exceptions
@@ -25,30 +42,38 @@ def delete_brand(request, brand_code):
     return Response({"message": "brand deleted successfully"}, status=status.HTTP_200_OK)
 
 @api_view(["PUT"])
+@parser_classes([MultiPartParser,FormParser])
 @handle_exceptions
 def update_brand(request, brand_code):
     updates=request.data
-    if not updates:
+    if not updates and "image" not in request.FILES:
         raise ValueError("no fields provided for update")
-    updated_brand=Brand.brand_update(brand_code, updates)
+    image_file=request.FILES.get("image")
+    tmp_path=save_image(image_file) if image_file else None
+    updated_brand=Brand.brand_update(brand_code, updates, image_file_path=tmp_path)
     return Response({
         "message": "brand updated successfully",
         "brand": updated_brand.to_dict()
-    }, status=status.HTTP_200_OK)
+    },status=status.HTTP_200_OK)
 
 
 @api_view(["POST"])
+@parser_classes([MultiPartParser,FormParser])
 @handle_exceptions
 def insert_model(request, brand_code):
     data=request.data
-    for field in ["model_name", "model_code", "image_url"]:
+    for field in ["model_name", "model_code"]:
         if field not in data:
             raise ValueError(f"{field} is required")
-    model=Model.model_insert(brand_code, data["model_name"], data["model_code"], data["image_url"])
+    image_file=request.FILES.get("image")
+    if not image_file:
+        raise ValueError("image is required")
+    tmp_path=save_image(image_file)
+    model=Model.model_insert(brand_code, data["model_name"], data["model_code"], tmp_path)
     return Response({
         "message": "model inserted successfully",
         "model": model.to_dict()
-    }, status=status.HTTP_201_CREATED)
+    },status=status.HTTP_201_CREATED)
 
 @api_view(["DELETE"])
 @handle_exceptions
@@ -57,33 +82,39 @@ def delete_model(request, brand_code, model_code):
     return Response({"message": "model deleted successfully"}, status=status.HTTP_200_OK)
 
 @api_view(["PUT"])
+@parser_classes([MultiPartParser,FormParser])
 @handle_exceptions
 def update_model(request, brand_code, model_code):
     updates=request.data
-    if not updates:
+    if not updates and "image" not in request.FILES:
         raise ValueError("no fields provided for update")
-    updated_model=Model.model_update(brand_code, model_code, updates)
+    image_file=request.FILES.get("image")
+    tmp_path=save_image(image_file) if image_file else None
+    updated_model=Model.model_update(brand_code, model_code, updates, image_file_path=tmp_path)
     return Response({
         "message": "model updated successfully",
         "model": updated_model.to_dict()
-    }, status=status.HTTP_200_OK)
+    },status=status.HTTP_200_OK)
 
 
 @api_view(["POST"])
+@parser_classes([MultiPartParser,FormParser])
 @handle_exceptions
 def insert_category(request, brand_code, model_code):
     data=request.data
-    for field in ["category_name", "category_code", "image_url"]:
+    for field in ["category_name", "category_code"]:
         if field not in data:
             raise ValueError(f"{field} is required")
+    image_file=request.FILES.get("image")
+    if not image_file:
+        raise ValueError("image is required")
+    tmp_path=save_image(image_file)
     category=Category.category_insert(
-        brand_code, model_code,
-        data["category_name"], data["category_code"], data["image_url"]
-    )
+        brand_code,model_code, data["category_name"], data["category_code"], tmp_path)
     return Response({
         "message": "category inserted successfully",
         "category": category.to_dict()
-    }, status=status.HTTP_201_CREATED)
+    },status=status.HTTP_201_CREATED)
 
 @api_view(["DELETE"])
 @handle_exceptions
@@ -92,34 +123,42 @@ def delete_category(request, brand_code, model_code, category_code):
     return Response({"message": "category deleted successfully"}, status=status.HTTP_200_OK)
 
 @api_view(["PUT"])
+@parser_classes([MultiPartParser,FormParser])
 @handle_exceptions
 def update_category(request, brand_code, model_code, category_code):
     updates=request.data
-    if not updates:
+    if not updates and "image" not in request.FILES:
         raise ValueError("no fields provided for update")
-    updated_category=Category.category_update(brand_code, model_code, category_code, updates)
+    image_file=request.FILES.get("image")
+    tmp_path=save_image(image_file) if image_file else None
+    updated_category=Category.category_update(
+        brand_code, model_code, category_code, updates, image_file_path=tmp_path)
     return Response({
         "message": "category updated successfully",
         "category": updated_category.to_dict()
-    }, status=status.HTTP_200_OK)
+    },status=status.HTTP_200_OK)
 
 
 @api_view(["POST"])
+@parser_classes([MultiPartParser,FormParser])
 @handle_exceptions
 def insert_product(request, brand_code, model_code, category_code):
     data=request.data
-    for field in ["product_name", "product_code", "description", "price", "stock", "image_url"]:
+    for field in ["product_name", "product_code", "description", "price", "stock"]:
         if field not in data:
             raise ValueError(f"{field} is required")
+    image_file=request.FILES.get("image")
+    if not image_file:
+        raise ValueError("image is required")
+    tmp_path=save_image(image_file)
     product=Product.product_insert(
-        brand_code, model_code, category_code,
-        data["product_name"], data["product_code"],
-        data["description"], data["price"], data["stock"], data["image_url"]
-    )
+        brand_code, model_code, category_code, 
+        data["product_name"], data["product_code"], 
+        data["description"], data["price"], data["stock"], tmp_path)
     return Response({
         "message": "product inserted successfully",
         "product": product.to_dict()
-    }, status=status.HTTP_201_CREATED)
+    },status=status.HTTP_201_CREATED)
 
 @api_view(["DELETE"])
 @handle_exceptions
@@ -128,18 +167,26 @@ def delete_product(request, brand_code, model_code, category_code, product_code)
     return Response({"message": "product deleted successfully"}, status=status.HTTP_200_OK)
 
 @api_view(["PUT"])
+@parser_classes([MultiPartParser,FormParser])
 @handle_exceptions
 def update_product(request, brand_code, model_code, category_code, product_code):
-    updates=request.data
-    if not updates:
+    import json
+    updates=request.data.copy()
+    if "offers" in updates:
+        try:
+            updates["offers"]=json.loads(updates["offers"])
+        except json.JSONDecodeError:
+            raise ValueError("offers must be valid JSON")
+    if not updates and "image" not in request.FILES:
         raise ValueError("no fields provided for update")
+    image_file=request.FILES.get("image")
+    tmp_path=save_image(image_file) if image_file else None
     updated_product=Product.product_update(
-        brand_code, model_code, category_code, product_code, updates
-    )
+        brand_code, model_code, category_code, product_code, updates, image_file_path=tmp_path)
     return Response({
         "message": "product updated successfully",
         "product": updated_product.to_dict()
-    }, status=status.HTTP_200_OK)
+    },status=status.HTTP_200_OK)
 
 
 @api_view(["GET"])
