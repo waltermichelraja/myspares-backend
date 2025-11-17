@@ -66,7 +66,7 @@ class Brand:
         cls.validate_fields(brand_name, brand_code, "placeholder")
         if brands_collection.find_one({"brand_code": brand_code}):
             raise ValueError("brand_code already exists")
-        image_url=upload_image(image_file_path)
+        image_url=upload_image(image_file_path, folder="brands")
         brand_doc={
             "brand_name": brand_name,
             "brand_code": brand_code,
@@ -147,7 +147,7 @@ class Brand:
                     raise ValueError("invalid brand_name")
                 update_data["brand_name"]=updates["brand_name"].strip()
         if image_file_path:
-            update_data["image_url"]=upload_image(image_file_path)
+            update_data["image_url"]=upload_image(image_file_path, folder="brands")
         elif "image_url" in updates:
             if not isinstance(updates["image_url"], str) or not updates["image_url"].strip():
                 raise ValueError("invalid image_url")
@@ -227,7 +227,7 @@ class Model:
             raise ValueError("brand not found")
         if models_collection.find_one({"brand_id": brand_doc["_id"], "model_code": model_code}):
             raise ValueError("model_code already exists for this brand")
-        image_url=upload_image(image_file_path)
+        image_url=upload_image(image_file_path, folder="models")
         model_doc={
             "brand_id": brand_doc["_id"],
             "model_name": model_name,
@@ -310,7 +310,7 @@ class Model:
                     raise ValueError("invalid model_name")
                 update_data["model_name"]=updates["model_name"].strip()
         if image_file_path:
-            update_data["image_url"]=upload_image(image_file_path)
+            update_data["image_url"]=upload_image(image_file_path, folder="models")
         if not update_data:
             raise ValueError("no valid fields to update")
         result=models_collection.update_one({"_id": model_doc["_id"]}, {"$set": update_data})
@@ -392,7 +392,7 @@ class Category:
             raise ValueError("model not found")
         if categories_collection.find_one({"model_id": model_doc["_id"], "category_code": category_code}):
             raise ValueError("category_code already exists for this model")
-        image_url=upload_image(image_file_path)
+        image_url=upload_image(image_file_path, folder="categories")
         category_doc={
             "model_id": model_doc["_id"],
             "category_name": category_name,
@@ -481,7 +481,7 @@ class Category:
                         raise ValueError("invalid category_name")
                     update_data["category_name"]=updates["category_name"].strip()
         if image_file_path:
-            update_data["image_url"]=upload_image(image_file_path)
+            update_data["image_url"]=upload_image(image_file_path, folder="categories")
         if not update_data:
             raise ValueError("no valid fields to update")
         result=categories_collection.update_one({"_id": category_doc["_id"]}, {"$set": update_data})
@@ -572,7 +572,7 @@ class Product:
 
     @classmethod
     def product_insert(cls,brand_code, model_code, category_code, product_name, product_code, description, price, stock, image_file):
-        uploaded_url=upload_image(image_file)
+        uploaded_url=upload_image(image_file, folder="products")
         if uploaded_url is None:
             raise ValueError("image upload failed")
         image_url=uploaded_url
@@ -680,7 +680,7 @@ class Product:
         allowed_fields=["product_name", "description", "price", "stock", "image_url", "offers"]
         update_data={}
         if image_file_path:
-            uploaded_url=upload_image(image_file_path)
+            uploaded_url=upload_image(image_file_path, folder="products")
             if not uploaded_url:
                 raise ValueError("image upload failed")
             update_data["image_url"]=uploaded_url
